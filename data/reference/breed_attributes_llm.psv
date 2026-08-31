@@ -1,0 +1,274 @@
+# SecondChance structured breed reference
+# Produced by an LLM labeling pass (Claude, Anthropic) over the 254 atomic breed
+# tokens that appear in Austin Animal Center intake records between 2013-10-01
+# and 2022-03-04. The production pipeline regenerates this file by calling the
+# same model through Amazon Bedrock; see src/secondchance/labeling/breed_llm.py.
+#
+# Columns: name|group|size|weight_lb|coat|grooming|energy|flags
+#   group    SP Sporting, HO Hound, WK Working, TE Terrier, TO Toy,
+#            NS Non-Sporting, HE Herding, FSS AKC Foundation Stock Service,
+#            NR not recognized by AKC (landrace, type name, or shorthand),
+#            CD domestic cat (non-pedigree), CP pedigree cat
+#   size     T toy, S small, M medium, L large, G giant
+#   coat     H hairless, S short, M medium, L long
+#   grooming L low, M moderate, H high
+#   energy   L low, M moderate, H high, V very high
+#   flags    5 binary digits in order:
+#            bully_type, brachycephalic, guardian_or_working, bsl_risk, recognized_purebred
+#            bsl_risk marks breeds commonly named in US breed specific legislation
+#            or in homeowner insurance exclusion lists. It is recorded because it
+#            plausibly affects adopter demand, never as a reason to withhold care.
+Domestic Shorthair|CD|S|10|S|L|M|00000
+Labrador Retriever|SP|L|65|S|L|H|00001
+Pit Bull|NR|M|50|S|L|H|10010
+Chihuahua Shorthair|TO|T|5|S|L|M|00001
+German Shepherd|HE|L|75|M|H|H|00111
+Domestic Medium Hair|CD|S|10|M|M|M|00000
+Australian Cattle Dog|HE|M|40|S|L|V|00001
+Dachshund|HO|S|20|S|L|M|00001
+Domestic Longhair|CD|S|10|L|H|M|00000
+Boxer|WK|L|65|S|L|H|01111
+Border Collie|HE|M|40|M|M|V|00001
+Siamese|CP|S|9|S|L|H|00001
+Siberian Husky|WK|M|50|M|H|V|00011
+Miniature Poodle|NS|S|15|M|H|H|00001
+Beagle|HO|S|22|S|L|H|00001
+Great Pyrenees|WK|G|100|L|H|M|00101
+Catahoula|FSS|L|60|S|L|V|00001
+Australian Shepherd|HE|M|50|M|M|V|00001
+Yorkshire Terrier|TO|T|6|L|H|M|00001
+Rat Terrier|TE|S|15|S|L|H|00001
+Pointer|SP|L|55|S|L|V|00001
+Jack Russell Terrier|TE|S|15|S|L|V|00001
+Miniature Schnauzer|TE|S|15|M|H|M|00001
+Staffordshire|TE|M|45|S|L|H|10011
+Rottweiler|WK|L|105|S|L|M|00111
+Cairn Terrier|TE|S|14|M|M|H|00001
+Chihuahua Longhair|TO|T|5|L|M|M|00001
+Anatol Shepherd|WK|G|120|S|M|M|00101
+Shih Tzu|TO|S|12|L|H|M|01001
+American Bulldog|FSS|L|75|S|L|H|10111
+Plott Hound|HO|M|50|S|L|H|00001
+Black Mouth Cur|NR|M|55|S|L|V|00000
+Australian Kelpie|FSS|M|35|S|L|V|00001
+Maltese|TO|T|6|L|H|M|00001
+Pug|TO|S|17|S|M|L|01001
+American Pit Bull Terrier|NR|M|50|S|L|H|10010
+Golden Retriever|SP|L|65|L|H|H|00001
+Chow Chow|NS|M|55|L|H|L|01111
+American Staffordshire Terrier|TE|M|55|S|L|H|10011
+Basset Hound|HO|M|55|S|M|L|00001
+Doberman Pinsch|WK|L|80|S|L|H|00111
+Chinese Sharpei|NS|M|50|S|M|M|01111
+Miniature Pinscher|TO|T|10|S|L|H|00001
+Cardigan Welsh Corgi|HE|S|30|M|M|M|00001
+Border Terrier|TE|S|14|M|M|H|00001
+Alaskan Husky|NR|M|45|M|M|V|00000
+Cocker Spaniel|SP|S|27|L|H|M|00001
+Blue Lacy|NR|M|40|S|L|V|00000
+Great Dane|WK|G|140|S|L|M|00101
+Boston Terrier|NS|S|20|S|L|M|01001
+Pomeranian|TO|T|5|L|H|M|00001
+Mastiff|WK|G|175|S|L|L|00111
+Queensland Heeler|NR|M|40|S|L|V|00000
+Lhasa Apso|NS|S|14|L|H|M|00001
+American Shorthair|CP|S|11|S|L|M|00001
+Dachshund Longhair|HO|S|20|L|M|M|00001
+Toy Poodle|TO|T|6|M|H|M|00001
+Snowshoe|CP|S|10|S|L|M|00001
+Dachshund Wirehair|HO|S|20|M|M|M|00001
+Rhod Ridgeback|HO|L|80|S|L|H|00111
+Bull Terrier|TE|M|60|S|L|H|10011
+Black|NR|M|40|S|L|M|00000
+Tan Hound|NR|M|50|S|L|H|00000
+English Bulldog|NS|M|50|S|L|L|11011
+Belgian Malinois|HE|L|60|S|M|V|00111
+Collie Smooth|HE|L|60|S|M|M|00001
+Manchester Terrier|TE|S|17|S|L|H|00001
+Whippet|HO|M|30|S|L|M|00001
+Norfolk Terrier|TE|T|12|M|M|H|00001
+Pembroke Welsh Corgi|HE|S|27|M|M|M|00001
+Pekingese|TO|S|12|L|H|L|01001
+Flat Coat Retriever|SP|L|65|M|M|H|00001
+Redbone Hound|HO|L|55|S|L|H|00001
+Maine Coon|CP|S|15|L|H|M|00001
+Carolina Dog|FSS|M|40|S|L|H|00001
+Akita|WK|L|110|M|H|M|00111
+Basenji|HO|S|23|S|L|H|00001
+Harrier|HO|M|50|S|L|H|00001
+Weimaraner|SP|L|70|S|L|V|00001
+Wire Hair Fox Terrier|TE|S|17|M|H|H|00001
+Manx|CP|S|10|M|M|M|00001
+Dalmatian|NS|L|55|S|L|V|00001
+Standard Schnauzer|WK|M|40|M|H|H|00001
+Bichon Frise|NS|S|14|M|H|M|00001
+Vizsla|SP|M|50|S|L|V|00001
+Standard Poodle|NS|L|55|M|H|H|00001
+German Shorthair Pointer|SP|L|60|S|L|V|00001
+Greyhound|HO|L|65|S|L|M|00001
+Collie Rough|HE|L|60|L|H|M|00001
+Soft Coated Wheaten Terrier|TE|M|38|M|H|H|00001
+West Highland|TE|S|17|M|H|H|00001
+Papillon|TO|T|7|L|M|H|00001
+Russian Blue|CP|S|10|S|L|M|00001
+Bulldog|NS|M|50|S|L|L|11011
+Parson Russell Terrier|TE|S|15|S|M|V|00001
+Shetland Sheepdog|HE|S|22|L|H|H|00001
+Norwich Terrier|TE|T|12|M|M|H|00001
+Shiba Inu|NS|S|20|M|M|H|00001
+Dutch Shepherd|FSS|M|55|M|M|V|00101
+Smooth Fox Terrier|TE|S|17|S|L|H|00001
+Alaskan Malamute|WK|L|80|L|H|H|00011
+Bruss Griffon|TO|T|10|M|M|M|01001
+French Bulldog|NS|S|24|S|L|M|11001
+Italian Greyhound|TO|T|10|S|L|M|00001
+Pbgv|HO|S|35|M|H|H|00001
+Treeing Walker Coonhound|HO|L|55|S|L|V|00001
+English Coonhound|HO|M|55|S|L|V|00001
+Ragdoll|CP|S|15|L|H|L|00001
+Pharaoh Hound|HO|M|50|S|L|H|00001
+Bloodhound|HO|L|95|S|L|M|00001
+Cavalier Span|TO|S|15|L|H|M|00001
+Brittany|SP|M|35|M|M|V|00001
+Havanese|TO|S|11|L|H|M|00001
+Scottish Terrier|TE|S|20|M|H|M|00001
+St. Bernard Rough Coat|WK|G|160|L|H|L|00101
+American Eskimo|NS|S|22|L|H|H|00001
+Himalayan|CP|S|11|L|H|L|01001
+Bullmastiff|WK|G|120|S|L|M|00111
+Toy Fox Terrier|TO|T|6|S|L|H|00001
+Finnish Spitz|NS|M|28|M|M|H|00001
+American Foxhound|HO|L|65|S|L|V|00001
+Tibetan Spaniel|NS|S|13|M|M|M|00001
+English Pointer|SP|L|55|S|L|V|00001
+Welsh Terrier|TE|S|20|M|H|H|00001
+St. Bernard Smooth Coat|WK|G|160|S|M|L|00101
+Bernese Mountain Dog|WK|G|95|L|H|M|00001
+Airedale Terrier|TE|L|55|M|H|H|00001
+Cane Corso|WK|G|105|S|L|M|10111
+Bluetick Hound|HO|L|65|S|L|V|00001
+Chesa Bay Retr|SP|L|70|M|M|H|00001
+Persian|CP|S|11|L|H|L|01001
+Beauceron|HE|L|85|S|M|V|00101
+Irish Terrier|TE|M|27|M|H|H|00001
+Dogo Argentino|FSS|L|90|S|L|H|10111
+English Springer Spaniel|SP|M|45|M|H|H|00001
+Schnauzer Giant|WK|L|80|M|H|H|00101
+German Wirehaired Pointer|SP|L|65|M|M|V|00001
+Australian Terrier|TE|S|15|M|M|H|00001
+Swedish Vallhund|HE|S|28|M|M|H|00001
+Irish Wolfhound|HO|G|135|M|H|M|00001
+Tibetan Terrier|NS|S|25|L|H|M|00001
+Landseer|WK|G|130|L|H|L|00001
+Treeing Cur|NR|M|45|S|L|V|00000
+Dogue De Bordeaux|WK|G|110|S|L|L|11111
+Chinese Crested|TO|T|10|H|M|M|00001
+Bearded Collie|HE|M|50|L|H|H|00001
+Schipperke|NS|S|14|M|M|H|00001
+Bengal|CP|S|12|S|L|V|00001
+Feist|NR|S|20|S|L|H|00000
+Patterdale Terr|NR|S|12|S|L|V|00000
+Jindo|FSS|M|40|M|M|H|00001
+English Foxhound|HO|L|70|S|L|V|00001
+Nova Scotia Duck Tolling Retriever|SP|M|45|M|M|V|00001
+Bull Terrier Miniature|TE|S|28|S|L|H|10011
+Newfoundland|WK|G|130|L|H|L|00001
+Leonberger|WK|G|130|L|H|M|00101
+Silky Terrier|TO|T|10|L|H|H|00001
+Old English Bulldog|NR|M|60|S|L|M|10010
+Abyssinian|CP|S|9|S|L|H|00001
+Balinese|CP|S|9|L|M|H|00001
+American Curl Shorthair|CP|S|9|S|L|M|00001
+Canaan Dog|HE|M|45|M|M|H|00001
+Saluki|HO|L|55|M|M|H|00001
+Samoyed|WK|M|50|L|H|H|00001
+Field Spaniel|SP|M|45|M|H|M|00001
+English Shepherd|NR|M|50|M|M|V|00000
+Irish Setter|SP|L|65|L|H|V|00001
+Keeshond|NS|M|38|L|H|M|00001
+Wirehaired Pointing Griffon|SP|M|55|M|M|H|00001
+English Setter|SP|L|65|L|H|H|00001
+Ibizan Hound|HO|M|48|S|L|H|00001
+Glen Of Imaal|TE|S|35|M|M|M|00001
+Angora|CP|S|9|L|M|H|00001
+Boykin Span|SP|M|35|M|M|H|00001
+Japanese Bobtail|CP|S|8|S|L|H|00001
+Skye Terrier|TE|S|38|L|H|M|00001
+Mexican Hairless|NS|M|35|H|L|M|00001
+Kuvasz|WK|G|100|M|H|M|00101
+Neapolitan Mastiff|WK|G|140|S|M|L|10111
+British Shorthair|CP|S|12|S|M|L|00001
+Affenpinscher|TO|T|9|M|M|M|01001
+Tonkinese|CP|S|9|S|L|H|00001
+Presa Canario|FSS|G|110|S|L|M|10111
+Picardy Sheepdog|HE|M|60|M|M|H|00001
+Japanese Chin|TO|T|9|L|H|L|01001
+Old English Sheepdog|HE|L|75|L|H|M|00001
+Otterhound|HO|L|90|M|H|H|00001
+Bombay|CP|S|10|S|L|M|00001
+Akbash|NR|G|110|M|M|M|00100
+Boerboel|WK|G|150|S|L|M|10111
+Spanish Water Dog|HE|M|40|M|H|H|00001
+English Cocker Spaniel|SP|M|30|L|H|H|00001
+Treeing Tennesse Brindle|FSS|M|40|S|L|V|00001
+Unknown|NR|M|35|S|L|M|00000
+Turkish Van|CP|S|13|M|M|H|00001
+Turkish Angora|CP|S|8|L|M|H|00001
+Devon Rex|CP|S|7|S|L|H|00001
+Welsh Springer Spaniel|SP|M|42|M|M|H|00001
+Podengo Pequeno|HO|S|11|M|M|H|00001
+German Pinscher|WK|M|35|S|L|H|00001
+Greater Swiss Mountain Dog|WK|G|115|S|M|M|00001
+Dandie Dinmont|TE|S|22|M|H|M|00001
+Cymric|CP|S|10|L|H|M|00001
+Belgian Sheepdog|HE|L|60|L|H|V|00101
+Clumber Spaniel|SP|M|70|M|M|L|00001
+Burmese|CP|S|10|S|L|H|00001
+Bedlington Terr|TE|S|20|M|H|H|00001
+Cornish Rex|CP|S|8|S|L|H|00001
+Coton De Tulear|NS|S|12|L|H|M|00001
+Pixiebob Shorthair|CP|S|12|S|L|M|00001
+Munchkin Longhair|CP|S|7|L|H|M|00001
+Havana Brown|CP|S|9|S|L|M|00001
+Port Water Dog|WK|M|50|M|H|V|00001
+Munchkin Shorthair|CP|S|7|S|L|M|00001
+Norwegian Forest Cat|CP|S|14|L|H|M|00001
+Exotic Shorthair|CP|S|11|S|M|L|01001
+Oriental Sh|CP|S|9|S|L|H|00001
+Kangal|WK|G|120|S|M|M|00101
+Belgian Tervuren|HE|L|60|L|H|V|00101
+Lowchen|NS|S|15|L|H|M|00001
+Entlebucher|HE|M|60|S|L|V|00001
+Hovawart|NR|L|80|M|M|H|00100
+Sphynx|CP|S|9|H|M|H|00001
+Colorpoint|CP|S|9|S|L|H|00001
+Spinone Italiano|SP|L|75|M|M|M|00001
+Scottish Fold|CP|S|10|S|M|M|00001
+Afghan Hound|HO|L|55|L|H|M|00001
+Swiss Hound|NR|M|45|S|L|H|00000
+Birman|CP|S|11|L|H|M|00001
+Gordon Setter|SP|L|60|L|H|H|00001
+Rex|CP|S|8|S|L|H|00000
+Lakeland Terrier|TE|S|17|M|H|H|00001
+Sussex Span|SP|M|42|M|M|L|00001
+Javanese|CP|S|9|M|M|H|00001
+Chartreux|CP|S|12|M|M|M|00001
+Borzoi|HO|G|85|L|H|M|00001
+Norwegian Elkhound|HO|M|50|M|H|H|00001
+Wirehaired Vizsla|SP|M|55|M|M|V|00001
+Silkie|TO|T|10|L|H|H|00000
+American Wirehair|CP|S|11|M|L|M|00001
+Spanish Mastiff|NR|G|175|M|M|L|00100
+Ocicat|CP|S|11|S|L|H|00001
+Sealyham Terr|TE|S|23|M|H|M|00001
+Dachshund Stan|HO|S|25|S|L|M|00001
+Yorkshire|TO|T|6|L|H|M|00001
+Grand Basset Griffon Vendeen|HO|M|40|M|H|H|00001
+Wolf Hybrid|NR|L|85|M|M|V|00010
+Tibetan Mastiff|WK|G|120|L|H|L|00111
+Briard|HE|L|75|L|H|H|00101
+Eng Toy Spaniel|TO|T|11|L|H|L|01001
+Alaskan Klee Kai|FSS|S|15|M|M|H|00001
+Cirneco|HO|S|24|S|L|H|00001
+Bouv Flandres|HE|L|85|M|H|M|00101
+Dutch Sheepdog|HE|M|45|L|H|H|00000

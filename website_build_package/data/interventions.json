@@ -1,0 +1,52 @@
+{
+  "channels": [
+    {
+      "channel": "photography",
+      "label": "New photographs and a rewritten profile",
+      "rationale": "Listing quality is the cheapest lever a shelter controls.",
+      "evidence": "assumed",
+      "evidence_detail": "Not measurable in this dataset. Austin's public export contains no photograph or listing field, so we cannot estimate the effect and do not claim one.",
+      "staff_minutes": 25
+    },
+    {
+      "channel": "foster recruitment",
+      "label": "Place in a foster home",
+      "rationale": "Foster placement precedes adoption for a large share of Austin adoptions, especially for neonates.",
+      "evidence": "measured",
+      "evidence_detail": "12,175 of 62,130 adoptions in this dataset carry the Foster outcome subtype, and neonates reach 47.8 percent cumulative adoption incidence by day 90 against 21.4 percent by day 30, a pattern consistent with a foster then adopt pathway.",
+      "staff_minutes": 45
+    },
+    {
+      "channel": "adoption event",
+      "label": "Feature at a weekend adoption event",
+      "rationale": "Puts the animal in front of walk-in traffic it would not otherwise see.",
+      "evidence": "assumed",
+      "evidence_detail": "Event participation is not recorded in the public export.",
+      "staff_minutes": 90
+    },
+    {
+      "channel": "medical and behaviour support",
+      "label": "Medical or behaviour intervention",
+      "rationale": "Intake condition is one of the strongest measured predictors of a slow exit.",
+      "evidence": "measured",
+      "evidence_detail": "Animals arriving injured reach 18.5 percent 30-day adoption against 43.4 percent for animals arriving in normal condition, and the Cox hazard ratio for injured intake is 0.477.",
+      "staff_minutes": 120
+    },
+    {
+      "channel": "senior adoption event",
+      "label": "Senior-focused outreach",
+      "rationale": "Senior animals are the slowest life stage in this dataset.",
+      "evidence": "measured",
+      "evidence_detail": "Seniors reach 17.8 percent cumulative adoption incidence by day 30 against 59.8 percent for puppies and kittens; the Cox hazard ratio for the senior band is 0.425.",
+      "staff_minutes": 60
+    },
+    {
+      "channel": "social media",
+      "label": "Feature on social channels",
+      "rationale": "Extends reach beyond walk-in traffic at near zero marginal cost.",
+      "evidence": "assumed",
+      "evidence_detail": "No reach or referral data is available in the public export.",
+      "staff_minutes": 15
+    }
+  ]
+}

@@ -1,0 +1,148 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "secondchance"
+version = "1.0.0"
+description = "Competing-risk survival forecasting of shelter adoption at the Austin Animal Center"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Davis Higgins", email = "davishiggins1@gmail.com" }]
+keywords = ["survival-analysis", "competing-risks", "animal-welfare", "mlops", "calibration"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Runtime only. Everything needed to build episodes, train, evaluate and score.
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.1",
+    "pyarrow>=14.0",
+    "scikit-learn>=1.4",
+    "lightgbm>=4.1",
+    "xgboost>=2.0",
+    "lifelines>=0.28",
+    "scipy>=1.11",
+    # Model serialisation for the command line tool. scikit-learn recommends it
+    # over pickle for estimators carrying large numpy arrays.
+    "joblib>=1.3",
+]
+
+[project.optional-dependencies]
+# Interpretability and figures. Not needed to serve a prediction, so the Lambda
+# package stays small.
+analysis = [
+    "shap>=0.44",
+    "matplotlib>=3.8",
+    "statsmodels>=0.14",
+]
+# Only what the deployed components need.
+aws = [
+    "boto3>=1.34",
+    "aws-lambda-powertools>=2.30",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+    "ruff>=0.3",
+    "mypy>=1.9",
+    "types-requests",
+    "pandas-stubs",
+]
+docs = [
+    "markdown>=3.5",
+    "pypdfium2>=4.25",
+]
+
+[project.scripts]
+secondchance = "secondchance.cli:main"
+
+[project.urls]
+Repository = "https://github.com/davishiggins/secondchance"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+secondchance = ["py.typed"]
+
+# -----------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers --strict-config"
+markers = [
+    "slow: takes more than five seconds, skipped by default in CI's fast lane",
+    "aws: needs live AWS credentials, never runs in CI",
+]
+filterwarnings = [
+    "error::FutureWarning",
+    "ignore::DeprecationWarning:lifelines.*",
+]
+
+[tool.coverage.run]
+source = ["src/secondchance"]
+omit = ["*/handlers.py", "*/aws_handlers.py"]
+
+[tool.coverage.report]
+# The number is a floor rather than a target. Coverage measures which lines ran,
+# not whether the assertions were worth making, and chasing it above this point
+# tends to produce tests that exist to be counted.
+fail_under = 70
+show_missing = true
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:", "raise NotImplementedError"]
+
+# -----------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests", "analysis"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # import sorting
+    "N",        # pep8-naming
+    "D",        # pydocstyle, because the grading rubric asks for PEP 257
+    "UP",       # pyupgrade
+    "B",        # bugbear
+    "C4",       # comprehensions
+    "SIM",      # simplify
+    "ARG",      # unused arguments
+    "PTH",      # prefer pathlib
+    "RUF",
+]
+ignore = [
+    "D203",   # conflicts with D211
+    "D213",   # conflicts with D212
+    "E501",   # line length is handled by the formatter
+    "B008",   # function call in argument default, deliberate for a few config objects
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Analysis scripts are read top to bottom as a narrative and import after the
+# path setup, which the linter cannot know about.
+"analysis/*" = ["D", "E402", "N999"]
+"tests/*" = ["D", "ARG"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+# -----------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+exclude = ["^analysis/", "^build/"]
+
+[[tool.mypy.overrides]]
+module = ["lightgbm.*", "xgboost.*", "lifelines.*", "boto3.*", "joblib.*"]
+ignore_missing_imports = true

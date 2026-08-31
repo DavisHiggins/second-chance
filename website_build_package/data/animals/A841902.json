@@ -1,0 +1,124 @@
+{
+  "animal_id": "A841902",
+  "episode_id": "A841902-3",
+  "name": "Cookie",
+  "name_is_shelter_assigned": false,
+  "animal_type": "Dog",
+  "breed": "Pit Bull",
+  "breed_primary_group": "Not AKC recognised",
+  "color": "Black/White",
+  "age_band": "senior",
+  "age_at_intake_days": 2922.0,
+  "sex_upon_intake": "Spayed Female",
+  "intake_type": "Owner Surrender",
+  "intake_condition": "Normal",
+  "intake_datetime": "2021-11-01T15:30:00",
+  "days_in_care": 122,
+  "photo_url": null,
+  "p_adopt_7d": 0.0985,
+  "p_adopt_14d": 0.1973,
+  "p_adopt_30d": 0.2588,
+  "p_long_stay_60d": 0.2953,
+  "expected_days_in_shelter": 79.0,
+  "risk_band": "warning",
+  "drivers": [
+    {
+      "feature": "intake_type_Owner_Surrender",
+      "label": "surrendered by an owner, so the history is known",
+      "contribution": 0.5229,
+      "direction": "raises"
+    },
+    {
+      "feature": "breed_bully_type",
+      "label": "carries a bully-type breed label",
+      "contribution": -0.4319,
+      "direction": "lowers"
+    },
+    {
+      "feature": "age_at_intake_days",
+      "label": "older than most adopters ask for",
+      "contribution": -0.381,
+      "direction": "lowers"
+    },
+    {
+      "feature": "intakes_prior_30d",
+      "label": "arrived in a quiet month",
+      "contribution": 0.2135,
+      "direction": "raises"
+    }
+  ],
+  "survival_curve": [
+    {
+      "day": 1,
+      "still_in_shelter": null
+    },
+    {
+      "day": 7,
+      "still_in_shelter": null
+    },
+    {
+      "day": 14,
+      "still_in_shelter": null
+    },
+    {
+      "day": 30,
+      "still_in_shelter": null
+    },
+    {
+      "day": 60,
+      "still_in_shelter": null
+    },
+    {
+      "day": 90,
+      "still_in_shelter": null
+    },
+    {
+      "day": 180,
+      "still_in_shelter": null
+    }
+  ],
+  "suggested_channel": "foster recruitment",
+  "timeline": [
+    {
+      "event": "intake",
+      "at": "2021-11-01T15:30:00",
+      "detail": "Owner Surrender, Normal condition"
+    },
+    {
+      "event": "prior_visits",
+      "at": "2021-11-01T15:30:00",
+      "detail": "2 previous visit(s) on record"
+    }
+  ],
+  "similar_animals": [
+    {
+      "animal_id": "A591444",
+      "name": "Addy",
+      "breed": "Carolina Dog/Border Collie",
+      "days_to_outcome": 18.1,
+      "outcome": "Transfer",
+      "similarity": 1.0
+    },
+    {
+      "animal_id": "A606477",
+      "name": "Maxine",
+      "breed": "Catahoula/Plott Hound",
+      "days_to_outcome": 92.8,
+      "outcome": "Transfer",
+      "similarity": 1.0
+    },
+    {
+      "animal_id": "A615660",
+      "name": "Yager",
+      "breed": "Pit Bull Mix",
+      "days_to_outcome": 12.0,
+      "outcome": "Transfer",
+      "similarity": 1.0
+    }
+  ],
+  "actual_outcome": {
+    "note": "This animal's real outcome, shown in the demo only so a reviewer can check the prediction against what happened. A live deployment would not have it at scoring time.",
+    "outcome_type": "Rto-Adopt",
+    "days_to_outcome": 26.0
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "animal_id": "A824646",
+  "episode_id": "A824646-3",
+  "name": "Snoopy",
+  "name_is_shelter_assigned": false,
+  "animal_type": "Dog",
+  "breed": "Pit Bull",
+  "breed_primary_group": "Not AKC recognised",
+  "color": "Black/White",
+  "age_band": "adult",
+  "age_at_intake_days": 2556.8,
+  "sex_upon_intake": "Neutered Male",
+  "intake_type": "Owner Surrender",
+  "intake_condition": "Normal",
+  "intake_datetime": "2021-12-14T15:52:00",
+  "days_in_care": 79,
+  "photo_url": null,
+  "p_adopt_7d": 0.0985,
+  "p_adopt_14d": 0.1973,
+  "p_adopt_30d": 0.2588,
+  "p_long_stay_60d": 0.2953,
+  "expected_days_in_shelter": 83.3,
+  "risk_band": "warning",
+  "drivers": [
+    {
+      "feature": "intake_type_Owner_Surrender",
+      "label": "surrendered by an owner, so the history is known",
+      "contribution": 0.5331,
+      "direction": "raises"
+    },
+    {
+      "feature": "breed_bully_type",
+      "label": "carries a bully-type breed label",
+      "contribution": -0.4693,
+      "direction": "lowers"
+    },
+    {
+      "feature": "age_at_intake_days",
+      "label": "older than most adopters ask for",
+      "contribution": -0.3349,
+      "direction": "lowers"
+    },
+    {
+      "feature": "intakes_prior_30d",
+      "label": "arrived in a quiet month",
+      "contribution": 0.2201,
+      "direction": "raises"
+    }
+  ],
+  "survival_curve": [
+    {
+      "day": 1,
+      "still_in_shelter": null
+    },
+    {
+      "day": 7,
+      "still_in_shelter": null
+    },
+    {
+      "day": 14,
+      "still_in_shelter": null
+    },
+    {
+      "day": 30,
+      "still_in_shelter": null
+    },
+    {
+      "day": 60,
+      "still_in_shelter": null
+    },
+    {
+      "day": 90,
+      "still_in_shelter": null
+    },
+    {
+      "day": 180,
+      "still_in_shelter": null
+    }
+  ],
+  "suggested_channel": "foster recruitment",
+  "timeline": [
+    {
+      "event": "intake",
+      "at": "2021-12-14T15:52:00",
+      "detail": "Owner Surrender, Normal condition"
+    },
+    {
+      "event": "prior_visits",
+      "at": "2021-12-14T15:52:00",
+      "detail": "2 previous visit(s) on record"
+    }
+  ],
+  "similar_animals": [
+    {
+      "animal_id": "A646712",
+      "name": "Marley",
+      "breed": "Labrador Retriever/Flat Coat Retriever",
+      "days_to_outcome": 2.0,
+      "outcome": "Adoption",
+      "similarity": 1.0
+    },
+    {
+      "animal_id": "A668664",
+      "name": "Xavier",
+      "breed": "Pit Bull Mix",
+      "days_to_outcome": 95.0,
+      "outcome": "Adoption",
+      "similarity": 1.0
+    },
+    {
+      "animal_id": "A668664",
+      "name": "Xavier",
+      "breed": "Pit Bull Mix",
+      "days_to_outcome": 18.0,
+      "outcome": "Adoption",
+      "similarity": 1.0
+    }
+  ],
+  "actual_outcome": {
+    "note": "This animal's real outcome, shown in the demo only so a reviewer can check the prediction against what happened. A live deployment would not have it at scoring time.",
+    "outcome_type": null,
+    "days_to_outcome": 79.8
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "animal_id": "A843754",
+  "episode_id": "A843754-1",
+  "name": "158 G",
+  "name_is_shelter_assigned": false,
+  "animal_type": "Cat",
+  "breed": "Domestic Shorthair",
+  "breed_primary_group": "Domestic cat",
+  "color": "Lilac Point",
+  "age_band": "neonate",
+  "age_at_intake_days": 7.0,
+  "sex_upon_intake": "Intact Female",
+  "intake_type": "Stray",
+  "intake_condition": "Neonatal",
+  "intake_datetime": "2021-10-06T08:09:00",
+  "days_in_care": 149,
+  "photo_url": null,
+  "p_adopt_7d": 0.0,
+  "p_adopt_14d": 0.0005,
+  "p_adopt_30d": 0.0031,
+  "p_long_stay_60d": 0.2953,
+  "expected_days_in_shelter": 52.7,
+  "risk_band": "warning",
+  "drivers": [
+    {
+      "feature": "age_at_intake_days",
+      "label": "too young to be adopted directly yet",
+      "contribution": -3.3206,
+      "direction": "lowers"
+    },
+    {
+      "feature": "name_length",
+      "label": "has a name on record",
+      "contribution": 0.659,
+      "direction": "raises"
+    },
+    {
+      "feature": "intake_condition_Normal",
+      "label": "did not arrive in normal condition",
+      "contribution": -0.517,
+      "direction": "lowers"
+    },
+    {
+      "feature": "name_is_shelter_assigned",
+      "label": "came in with an owner's name",
+      "contribution": 0.2558,
+      "direction": "raises"
+    }
+  ],
+  "survival_curve": [
+    {
+      "day": 1,
+      "still_in_shelter": null
+    },
+    {
+      "day": 7,
+      "still_in_shelter": null
+    },
+    {
+      "day": 14,
+      "still_in_shelter": null
+    },
+    {
+      "day": 30,
+      "still_in_shelter": null
+    },
+    {
+      "day": 60,
+      "still_in_shelter": null
+    },
+    {
+      "day": 90,
+      "still_in_shelter": null
+    },
+    {
+      "day": 180,
+      "still_in_shelter": null
+    }
+  ],
+  "suggested_channel": "photography",
+  "timeline": [
+    {
+      "event": "intake",
+      "at": "2021-10-06T08:09:00",
+      "detail": "Stray, Neonatal condition"
+    }
+  ],
+  "similar_animals": [
+    {
+      "animal_id": "A815364",
+      "name": "Freddie",
+      "breed": "Domestic Shorthair",
+      "days_to_outcome": 37.7,
+      "outcome": "Adoption",
+      "similarity": 1.0
+    },
+    {
+      "animal_id": "A815365",
+      "name": "Duncan",
+      "breed": "Domestic Shorthair",
+      "days_to_outcome": 37.9,
+      "outcome": "Adoption",
+      "similarity": 1.0
+    },
+    {
+      "animal_id": "A815366",
+      "name": "Mona",
+      "breed": "Domestic Shorthair",
+      "days_to_outcome": 37.7,
+      "outcome": "Adoption",
+      "similarity": 1.0
+    }
+  ],
+  "actual_outcome": {
+    "note": "This animal's real outcome, shown in the demo only so a reviewer can check the prediction against what happened. A live deployment would not have it at scoring time.",
+    "outcome_type": "Transfer",
+    "days_to_outcome": 0.3
+  }
+}

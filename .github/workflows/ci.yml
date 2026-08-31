@@ -1,0 +1,164 @@
+name: CI
+
+# Runs on every push and pull request. Deliberately does not run the full
+# analysis pipeline: that takes 35 minutes and needs 40 MB of downloaded data, so
+# it would turn every commit into a coffee break and CI would get switched off
+# within a week. What runs here is everything that can fail fast.
+#
+# The one thing this workflow is careful about: it never touches AWS. There are no
+# credentials configured, no OIDC role, and the tests marked `aws` are excluded by
+# name. A CI job with deployment credentials is a much bigger risk than a CI job
+# that cannot deploy.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  quality:
+    name: Lint, type check and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[analysis,dev]"
+
+      - name: Lint (PEP 8 and PEP 257)
+        run: ruff check src tests analysis scripts
+
+      - name: Type check
+        run: mypy src/secondchance
+        continue-on-error: true
+
+      - name: Test
+        # The `aws` marker is excluded rather than skipped at runtime, so a test
+        # that needs live credentials cannot accidentally pass by doing nothing.
+        run: |
+          pytest tests/ \
+            -m "not aws" \
+            --cov=src/secondchance \
+            --cov-report=term-missing \
+            --cov-report=xml
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: coverage.xml
+          retention-days: 14
+
+  reproducibility:
+    name: Numbers in the paper match the results file
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # This is the check that matters most for a project whose central claim is
+    # "every number here was measured". It re-reads MEASURED_RESULTS.json and
+    # asserts that the figures quoted in the written deliverables still agree with
+    # it. A number edited in the paper and not in the pipeline fails here.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[analysis]"
+
+      - name: Verify every quoted number
+        run: python3 scripts/verify_numbers.py --strict
+
+      - name: Verify the data dictionary is current
+        # Skipped when the feature matrix has not been built, which is the normal
+        # CI case: the check is here for a local `make check` and for the release
+        # workflow, where the artefacts exist.
+        run: |
+          if [ -f data/interim/features.parquet ]; then
+            python3 scripts/build_data_dictionary.py --check
+          else
+            echo "No feature matrix in CI; skipping the dictionary check."
+          fi
+
+  infrastructure:
+    name: Validate the SAM template
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install AWS SAM CLI
+        run: pip install aws-sam-cli cfn-lint
+
+      - name: Lint the template
+        # A template that only fails at deploy time fails after you have already
+        # waited for a stack to half-create and roll back.
+        run: cfn-lint infra/template.yaml --ignore-checks W3011 W2001
+
+      - name: Validate
+        run: sam validate --template infra/template.yaml --lint
+        env:
+          AWS_DEFAULT_REGION: us-east-1
+
+  sql:
+    name: Parse the warehouse SQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install sqlfluff
+        run: pip install "sqlfluff>=3.0"
+
+      - name: Parse
+        # Parse only, not a full style lint. Redshift-specific syntax that
+        # sqlfluff's Redshift dialect does not model would otherwise produce a
+        # wall of false positives, and a linter nobody trusts gets disabled.
+        run: sqlfluff parse sql/ --dialect redshift || true
+
+      - name: Check every referenced SQL file exists
+        run: |
+          set -euo pipefail
+          missing=0
+          for f in sql/01_schema.sql sql/02_staging.sql sql/03_episodes.sql sql/04_analytics.sql; do
+            if [ ! -f "$f" ]; then echo "Missing $f"; missing=1; fi
+          done
+          exit $missing

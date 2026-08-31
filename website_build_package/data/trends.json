@@ -1,0 +1,987 @@
+{
+  "months": [
+    {
+      "month": "2013-11",
+      "census": 596.4641,
+      "intakes": 1323,
+      "adoptions": 522,
+      "adoption_rate": 0.3946,
+      "adopted_within_30d_rate": 0.2797,
+      "long_stay_60d_rate": 0.0454,
+      "median_days_to_adoption": 15.9024
+    },
+    {
+      "month": "2013-12",
+      "census": 597.7126,
+      "intakes": 1270,
+      "adoptions": 514,
+      "adoption_rate": 0.4047,
+      "adopted_within_30d_rate": 0.3268,
+      "long_stay_60d_rate": 0.0449,
+      "median_days_to_adoption": 8.2941
+    },
+    {
+      "month": "2014-01",
+      "census": 499.8104,
+      "intakes": 1271,
+      "adoptions": 503,
+      "adoption_rate": 0.3958,
+      "adopted_within_30d_rate": 0.3037,
+      "long_stay_60d_rate": 0.0598,
+      "median_days_to_adoption": 8.0312
+    },
+    {
+      "month": "2014-02",
+      "census": 540.6793,
+      "intakes": 1191,
+      "adoptions": 484,
+      "adoption_rate": 0.4064,
+      "adopted_within_30d_rate": 0.3073,
+      "long_stay_60d_rate": 0.0772,
+      "median_days_to_adoption": 10.9549
+    },
+    {
+      "month": "2014-03",
+      "census": 590.2992,
+      "intakes": 1484,
+      "adoptions": 466,
+      "adoption_rate": 0.314,
+      "adopted_within_30d_rate": 0.2352,
+      "long_stay_60d_rate": 0.0532,
+      "median_days_to_adoption": 9.259
+    },
+    {
+      "month": "2014-04",
+      "census": 675.9453,
+      "intakes": 1535,
+      "adoptions": 555,
+      "adoption_rate": 0.3616,
+      "adopted_within_30d_rate": 0.2241,
+      "long_stay_60d_rate": 0.0827,
+      "median_days_to_adoption": 16.9486
+    },
+    {
+      "month": "2014-05",
+      "census": 919.2724,
+      "intakes": 1957,
+      "adoptions": 752,
+      "adoption_rate": 0.3843,
+      "adopted_within_30d_rate": 0.2049,
+      "long_stay_60d_rate": 0.1099,
+      "median_days_to_adoption": 25.1215
+    },
+    {
+      "month": "2014-06",
+      "census": 1135.3028,
+      "intakes": 1793,
+      "adoptions": 721,
+      "adoption_rate": 0.4021,
+      "adopted_within_30d_rate": 0.2761,
+      "long_stay_60d_rate": 0.0541,
+      "median_days_to_adoption": 16.1604
+    },
+    {
+      "month": "2014-07",
+      "census": 1057.2611,
+      "intakes": 1888,
+      "adoptions": 740,
+      "adoption_rate": 0.3919,
+      "adopted_within_30d_rate": 0.2908,
+      "long_stay_60d_rate": 0.0519,
+      "median_days_to_adoption": 9.0566
+    },
+    {
+      "month": "2014-08",
+      "census": 882.4608,
+      "intakes": 1645,
+      "adoptions": 618,
+      "adoption_rate": 0.3757,
+      "adopted_within_30d_rate": 0.2936,
+      "long_stay_60d_rate": 0.0511,
+      "median_days_to_adoption": 10.0059
+    },
+    {
+      "month": "2014-09",
+      "census": 804.1567,
+      "intakes": 1698,
+      "adoptions": 646,
+      "adoption_rate": 0.3804,
+      "adopted_within_30d_rate": 0.2756,
+      "long_stay_60d_rate": 0.0583,
+      "median_days_to_adoption": 9.1243
+    },
+    {
+      "month": "2014-10",
+      "census": 825.3549,
+      "intakes": 1530,
+      "adoptions": 582,
+      "adoption_rate": 0.3804,
+      "adopted_within_30d_rate": 0.266,
+      "long_stay_60d_rate": 0.0582,
+      "median_days_to_adoption": 9.9861
+    },
+    {
+      "month": "2014-11",
+      "census": 844.672,
+      "intakes": 1372,
+      "adoptions": 475,
+      "adoption_rate": 0.3462,
+      "adopted_within_30d_rate": 0.2595,
+      "long_stay_60d_rate": 0.0379,
+      "median_days_to_adoption": 12.0264
+    },
+    {
+      "month": "2014-12",
+      "census": 691.9573,
+      "intakes": 1289,
+      "adoptions": 557,
+      "adoption_rate": 0.4321,
+      "adopted_within_30d_rate": 0.346,
+      "long_stay_60d_rate": 0.0396,
+      "median_days_to_adoption": 6.3299
+    },
+    {
+      "month": "2015-01",
+      "census": 571.3668,
+      "intakes": 1197,
+      "adoptions": 520,
+      "adoption_rate": 0.4344,
+      "adopted_within_30d_rate": 0.3617,
+      "long_stay_60d_rate": 0.0485,
+      "median_days_to_adoption": 6.9653
+    },
+    {
+      "month": "2015-02",
+      "census": 562.2531,
+      "intakes": 1118,
+      "adoptions": 499,
+      "adoption_rate": 0.4463,
+      "adopted_within_30d_rate": 0.3399,
+      "long_stay_60d_rate": 0.0814,
+      "median_days_to_adoption": 7.9944
+    },
+    {
+      "month": "2015-03",
+      "census": 627.7494,
+      "intakes": 1345,
+      "adoptions": 530,
+      "adoption_rate": 0.3941,
+      "adopted_within_30d_rate": 0.2743,
+      "long_stay_60d_rate": 0.0714,
+      "median_days_to_adoption": 10.1615
+    },
+    {
+      "month": "2015-04",
+      "census": 739.4025,
+      "intakes": 1543,
+      "adoptions": 543,
+      "adoption_rate": 0.3519,
+      "adopted_within_30d_rate": 0.2152,
+      "long_stay_60d_rate": 0.0778,
+      "median_days_to_adoption": 17.0146
+    },
+    {
+      "month": "2015-05",
+      "census": 936.3309,
+      "intakes": 2094,
+      "adoptions": 846,
+      "adoption_rate": 0.404,
+      "adopted_within_30d_rate": 0.2192,
+      "long_stay_60d_rate": 0.0917,
+      "median_days_to_adoption": 26.2174
+    },
+    {
+      "month": "2015-06",
+      "census": 1241.7784,
+      "intakes": 2189,
+      "adoptions": 838,
+      "adoption_rate": 0.3828,
+      "adopted_within_30d_rate": 0.2485,
+      "long_stay_60d_rate": 0.0653,
+      "median_days_to_adoption": 18.2288
+    },
+    {
+      "month": "2015-07",
+      "census": 1141.5034,
+      "intakes": 1635,
+      "adoptions": 675,
+      "adoption_rate": 0.4128,
+      "adopted_within_30d_rate": 0.2813,
+      "long_stay_60d_rate": 0.0826,
+      "median_days_to_adoption": 12.1611
+    },
+    {
+      "month": "2015-08",
+      "census": 1042.3772,
+      "intakes": 1718,
+      "adoptions": 689,
+      "adoption_rate": 0.401,
+      "adopted_within_30d_rate": 0.2806,
+      "long_stay_60d_rate": 0.0774,
+      "median_days_to_adoption": 12.1097
+    },
+    {
+      "month": "2015-09",
+      "census": 983.1986,
+      "intakes": 1591,
+      "adoptions": 622,
+      "adoption_rate": 0.3909,
+      "adopted_within_30d_rate": 0.247,
+      "long_stay_60d_rate": 0.0955,
+      "median_days_to_adoption": 13.0941
+    },
+    {
+      "month": "2015-10",
+      "census": 1064.2948,
+      "intakes": 1740,
+      "adoptions": 682,
+      "adoption_rate": 0.392,
+      "adopted_within_30d_rate": 0.2443,
+      "long_stay_60d_rate": 0.0856,
+      "median_days_to_adoption": 15.7292
+    },
+    {
+      "month": "2015-11",
+      "census": 1134.197,
+      "intakes": 1411,
+      "adoptions": 603,
+      "adoption_rate": 0.4274,
+      "adopted_within_30d_rate": 0.292,
+      "long_stay_60d_rate": 0.078,
+      "median_days_to_adoption": 13.0618
+    },
+    {
+      "month": "2015-12",
+      "census": 960.8901,
+      "intakes": 1128,
+      "adoptions": 457,
+      "adoption_rate": 0.4051,
+      "adopted_within_30d_rate": 0.3076,
+      "long_stay_60d_rate": 0.0629,
+      "median_days_to_adoption": 9.1528
+    },
+    {
+      "month": "2016-01",
+      "census": 775.4893,
+      "intakes": 1216,
+      "adoptions": 533,
+      "adoption_rate": 0.4383,
+      "adopted_within_30d_rate": 0.3503,
+      "long_stay_60d_rate": 0.0633,
+      "median_days_to_adoption": 6.9208
+    },
+    {
+      "month": "2016-02",
+      "census": 738.2998,
+      "intakes": 1194,
+      "adoptions": 559,
+      "adoption_rate": 0.4682,
+      "adopted_within_30d_rate": 0.3777,
+      "long_stay_60d_rate": 0.0745,
+      "median_days_to_adoption": 8.0569
+    },
+    {
+      "month": "2016-03",
+      "census": 763.7477,
+      "intakes": 1419,
+      "adoptions": 539,
+      "adoption_rate": 0.3798,
+      "adopted_within_30d_rate": 0.2868,
+      "long_stay_60d_rate": 0.0592,
+      "median_days_to_adoption": 7.909
+    },
+    {
+      "month": "2016-04",
+      "census": 817.6071,
+      "intakes": 1560,
+      "adoptions": 670,
+      "adoption_rate": 0.4295,
+      "adopted_within_30d_rate": 0.2378,
+      "long_stay_60d_rate": 0.1365,
+      "median_days_to_adoption": 20.8028
+    },
+    {
+      "month": "2016-05",
+      "census": 1180.5447,
+      "intakes": 2036,
+      "adoptions": 963,
+      "adoption_rate": 0.473,
+      "adopted_within_30d_rate": 0.2466,
+      "long_stay_60d_rate": 0.0972,
+      "median_days_to_adoption": 26.2354
+    },
+    {
+      "month": "2016-06",
+      "census": 1410.929,
+      "intakes": 1634,
+      "adoptions": 875,
+      "adoption_rate": 0.5355,
+      "adopted_within_30d_rate": 0.3623,
+      "long_stay_60d_rate": 0.0777,
+      "median_days_to_adoption": 13.209
+    },
+    {
+      "month": "2016-07",
+      "census": 1146.6984,
+      "intakes": 1409,
+      "adoptions": 690,
+      "adoption_rate": 0.4897,
+      "adopted_within_30d_rate": 0.352,
+      "long_stay_60d_rate": 0.0795,
+      "median_days_to_adoption": 10.3247
+    },
+    {
+      "month": "2016-08",
+      "census": 1130.7163,
+      "intakes": 1653,
+      "adoptions": 763,
+      "adoption_rate": 0.4616,
+      "adopted_within_30d_rate": 0.3158,
+      "long_stay_60d_rate": 0.1071,
+      "median_days_to_adoption": 11.7146
+    },
+    {
+      "month": "2016-09",
+      "census": 1116.5527,
+      "intakes": 1538,
+      "adoptions": 675,
+      "adoption_rate": 0.4389,
+      "adopted_within_30d_rate": 0.3036,
+      "long_stay_60d_rate": 0.0891,
+      "median_days_to_adoption": 10.034
+    },
+    {
+      "month": "2016-10",
+      "census": 1035.7318,
+      "intakes": 1387,
+      "adoptions": 623,
+      "adoption_rate": 0.4492,
+      "adopted_within_30d_rate": 0.2906,
+      "long_stay_60d_rate": 0.0714,
+      "median_days_to_adoption": 13.3458
+    },
+    {
+      "month": "2016-11",
+      "census": 1034.6006,
+      "intakes": 1337,
+      "adoptions": 606,
+      "adoption_rate": 0.4533,
+      "adopted_within_30d_rate": 0.3343,
+      "long_stay_60d_rate": 0.0688,
+      "median_days_to_adoption": 11.4594
+    },
+    {
+      "month": "2016-12",
+      "census": 911.5605,
+      "intakes": 1290,
+      "adoptions": 627,
+      "adoption_rate": 0.486,
+      "adopted_within_30d_rate": 0.3682,
+      "long_stay_60d_rate": 0.045,
+      "median_days_to_adoption": 9.0111
+    },
+    {
+      "month": "2017-01",
+      "census": 756.8914,
+      "intakes": 1216,
+      "adoptions": 627,
+      "adoption_rate": 0.5156,
+      "adopted_within_30d_rate": 0.4326,
+      "long_stay_60d_rate": 0.0354,
+      "median_days_to_adoption": 6.1069
+    },
+    {
+      "month": "2017-02",
+      "census": 599.0923,
+      "intakes": 1202,
+      "adoptions": 538,
+      "adoption_rate": 0.4476,
+      "adopted_within_30d_rate": 0.3661,
+      "long_stay_60d_rate": 0.0466,
+      "median_days_to_adoption": 5.3194
+    },
+    {
+      "month": "2017-03",
+      "census": 591.9706,
+      "intakes": 1360,
+      "adoptions": 510,
+      "adoption_rate": 0.375,
+      "adopted_within_30d_rate": 0.2647,
+      "long_stay_60d_rate": 0.0676,
+      "median_days_to_adoption": 8.2014
+    },
+    {
+      "month": "2017-04",
+      "census": 653.2964,
+      "intakes": 1481,
+      "adoptions": 646,
+      "adoption_rate": 0.4362,
+      "adopted_within_30d_rate": 0.2998,
+      "long_stay_60d_rate": 0.0878,
+      "median_days_to_adoption": 9.1708
+    },
+    {
+      "month": "2017-05",
+      "census": 943.9857,
+      "intakes": 1889,
+      "adoptions": 914,
+      "adoption_rate": 0.4839,
+      "adopted_within_30d_rate": 0.2917,
+      "long_stay_60d_rate": 0.1101,
+      "median_days_to_adoption": 16.0354
+    },
+    {
+      "month": "2017-06",
+      "census": 1197.343,
+      "intakes": 1854,
+      "adoptions": 929,
+      "adoption_rate": 0.5011,
+      "adopted_within_30d_rate": 0.3371,
+      "long_stay_60d_rate": 0.0814,
+      "median_days_to_adoption": 11.2146
+    },
+    {
+      "month": "2017-07",
+      "census": 1121.9462,
+      "intakes": 1618,
+      "adoptions": 745,
+      "adoption_rate": 0.4604,
+      "adopted_within_30d_rate": 0.3208,
+      "long_stay_60d_rate": 0.0766,
+      "median_days_to_adoption": 10.0188
+    },
+    {
+      "month": "2017-08",
+      "census": 972.7574,
+      "intakes": 1492,
+      "adoptions": 686,
+      "adoption_rate": 0.4598,
+      "adopted_within_30d_rate": 0.3519,
+      "long_stay_60d_rate": 0.0697,
+      "median_days_to_adoption": 7.0049
+    },
+    {
+      "month": "2017-09",
+      "census": 1071.6837,
+      "intakes": 1679,
+      "adoptions": 752,
+      "adoption_rate": 0.4479,
+      "adopted_within_30d_rate": 0.302,
+      "long_stay_60d_rate": 0.0941,
+      "median_days_to_adoption": 11.6705
+    },
+    {
+      "month": "2017-10",
+      "census": 970.0735,
+      "intakes": 1428,
+      "adoptions": 659,
+      "adoption_rate": 0.4615,
+      "adopted_within_30d_rate": 0.334,
+      "long_stay_60d_rate": 0.077,
+      "median_days_to_adoption": 8.2174
+    },
+    {
+      "month": "2017-11",
+      "census": 907.254,
+      "intakes": 1185,
+      "adoptions": 562,
+      "adoption_rate": 0.4743,
+      "adopted_within_30d_rate": 0.3207,
+      "long_stay_60d_rate": 0.0776,
+      "median_days_to_adoption": 12.9628
+    },
+    {
+      "month": "2017-12",
+      "census": 883.032,
+      "intakes": 1155,
+      "adoptions": 591,
+      "adoption_rate": 0.5117,
+      "adopted_within_30d_rate": 0.3948,
+      "long_stay_60d_rate": 0.0649,
+      "median_days_to_adoption": 7.9708
+    },
+    {
+      "month": "2018-01",
+      "census": 770.3072,
+      "intakes": 1123,
+      "adoptions": 555,
+      "adoption_rate": 0.4942,
+      "adopted_within_30d_rate": 0.3793,
+      "long_stay_60d_rate": 0.057,
+      "median_days_to_adoption": 7.1167
+    },
+    {
+      "month": "2018-02",
+      "census": 731.3803,
+      "intakes": 1044,
+      "adoptions": 520,
+      "adoption_rate": 0.4981,
+      "adopted_within_30d_rate": 0.3985,
+      "long_stay_60d_rate": 0.0661,
+      "median_days_to_adoption": 7.1066
+    },
+    {
+      "month": "2018-03",
+      "census": 754.3973,
+      "intakes": 1324,
+      "adoptions": 614,
+      "adoption_rate": 0.4637,
+      "adopted_within_30d_rate": 0.3278,
+      "long_stay_60d_rate": 0.0876,
+      "median_days_to_adoption": 8.1944
+    },
+    {
+      "month": "2018-04",
+      "census": 830.9604,
+      "intakes": 1388,
+      "adoptions": 608,
+      "adoption_rate": 0.438,
+      "adopted_within_30d_rate": 0.2803,
+      "long_stay_60d_rate": 0.1066,
+      "median_days_to_adoption": 11.1247
+    },
+    {
+      "month": "2018-05",
+      "census": 1044.5757,
+      "intakes": 1744,
+      "adoptions": 850,
+      "adoption_rate": 0.4874,
+      "adopted_within_30d_rate": 0.301,
+      "long_stay_60d_rate": 0.0946,
+      "median_days_to_adoption": 16.0347
+    },
+    {
+      "month": "2018-06",
+      "census": 1299.3792,
+      "intakes": 1722,
+      "adoptions": 876,
+      "adoption_rate": 0.5087,
+      "adopted_within_30d_rate": 0.3043,
+      "long_stay_60d_rate": 0.1196,
+      "median_days_to_adoption": 16.833
+    },
+    {
+      "month": "2018-07",
+      "census": 1295.4322,
+      "intakes": 1666,
+      "adoptions": 804,
+      "adoption_rate": 0.4826,
+      "adopted_within_30d_rate": 0.3295,
+      "long_stay_60d_rate": 0.0834,
+      "median_days_to_adoption": 14.1958
+    },
+    {
+      "month": "2018-08",
+      "census": 1120.3331,
+      "intakes": 1399,
+      "adoptions": 719,
+      "adoption_rate": 0.5139,
+      "adopted_within_30d_rate": 0.3788,
+      "long_stay_60d_rate": 0.0843,
+      "median_days_to_adoption": 8.0882
+    },
+    {
+      "month": "2018-09",
+      "census": 1057.0623,
+      "intakes": 1620,
+      "adoptions": 794,
+      "adoption_rate": 0.4901,
+      "adopted_within_30d_rate": 0.3302,
+      "long_stay_60d_rate": 0.1012,
+      "median_days_to_adoption": 11.9892
+    },
+    {
+      "month": "2018-10",
+      "census": 1139.3903,
+      "intakes": 1573,
+      "adoptions": 818,
+      "adoption_rate": 0.52,
+      "adopted_within_30d_rate": 0.2969,
+      "long_stay_60d_rate": 0.1227,
+      "median_days_to_adoption": 16.8826
+    },
+    {
+      "month": "2018-11",
+      "census": 1262.7623,
+      "intakes": 1237,
+      "adoptions": 601,
+      "adoption_rate": 0.4859,
+      "adopted_within_30d_rate": 0.2385,
+      "long_stay_60d_rate": 0.1091,
+      "median_days_to_adoption": 30.2326
+    },
+    {
+      "month": "2018-12",
+      "census": 1202.2441,
+      "intakes": 1135,
+      "adoptions": 575,
+      "adoption_rate": 0.5066,
+      "adopted_within_30d_rate": 0.3762,
+      "long_stay_60d_rate": 0.0811,
+      "median_days_to_adoption": 9.2014
+    },
+    {
+      "month": "2019-01",
+      "census": 977.6895,
+      "intakes": 1240,
+      "adoptions": 703,
+      "adoption_rate": 0.5669,
+      "adopted_within_30d_rate": 0.4056,
+      "long_stay_60d_rate": 0.0952,
+      "median_days_to_adoption": 8.9896
+    },
+    {
+      "month": "2019-02",
+      "census": 921.3466,
+      "intakes": 1131,
+      "adoptions": 552,
+      "adoption_rate": 0.4881,
+      "adopted_within_30d_rate": 0.3793,
+      "long_stay_60d_rate": 0.0778,
+      "median_days_to_adoption": 8.0378
+    },
+    {
+      "month": "2019-03",
+      "census": 908.8655,
+      "intakes": 1502,
+      "adoptions": 680,
+      "adoption_rate": 0.4527,
+      "adopted_within_30d_rate": 0.2996,
+      "long_stay_60d_rate": 0.0985,
+      "median_days_to_adoption": 9.9722
+    },
+    {
+      "month": "2019-04",
+      "census": 964.1771,
+      "intakes": 1621,
+      "adoptions": 711,
+      "adoption_rate": 0.4386,
+      "adopted_within_30d_rate": 0.2535,
+      "long_stay_60d_rate": 0.1333,
+      "median_days_to_adoption": 16.1806
+    },
+    {
+      "month": "2019-05",
+      "census": 1319.1646,
+      "intakes": 2132,
+      "adoptions": 1046,
+      "adoption_rate": 0.4906,
+      "adopted_within_30d_rate": 0.2763,
+      "long_stay_60d_rate": 0.1046,
+      "median_days_to_adoption": 18.2906
+    },
+    {
+      "month": "2019-06",
+      "census": 1530.3902,
+      "intakes": 2063,
+      "adoptions": 920,
+      "adoption_rate": 0.446,
+      "adopted_within_30d_rate": 0.303,
+      "long_stay_60d_rate": 0.0916,
+      "median_days_to_adoption": 11.2222
+    },
+    {
+      "month": "2019-07",
+      "census": 1400.6839,
+      "intakes": 1987,
+      "adoptions": 887,
+      "adoption_rate": 0.4464,
+      "adopted_within_30d_rate": 0.2964,
+      "long_stay_60d_rate": 0.0876,
+      "median_days_to_adoption": 14.2375
+    },
+    {
+      "month": "2019-08",
+      "census": 1338.7923,
+      "intakes": 1844,
+      "adoptions": 939,
+      "adoption_rate": 0.5092,
+      "adopted_within_30d_rate": 0.3351,
+      "long_stay_60d_rate": 0.1139,
+      "median_days_to_adoption": 10.2708
+    },
+    {
+      "month": "2019-09",
+      "census": 1330.1676,
+      "intakes": 1844,
+      "adoptions": 911,
+      "adoption_rate": 0.494,
+      "adopted_within_30d_rate": 0.321,
+      "long_stay_60d_rate": 0.1074,
+      "median_days_to_adoption": 11.3056
+    },
+    {
+      "month": "2019-10",
+      "census": 1399.7134,
+      "intakes": 1727,
+      "adoptions": 845,
+      "adoption_rate": 0.4893,
+      "adopted_within_30d_rate": 0.308,
+      "long_stay_60d_rate": 0.0747,
+      "median_days_to_adoption": 12.3542
+    },
+    {
+      "month": "2019-11",
+      "census": 1308.8983,
+      "intakes": 1436,
+      "adoptions": 747,
+      "adoption_rate": 0.5202,
+      "adopted_within_30d_rate": 0.374,
+      "long_stay_60d_rate": 0.0787,
+      "median_days_to_adoption": 10.0257
+    },
+    {
+      "month": "2019-12",
+      "census": 1064.578,
+      "intakes": 1199,
+      "adoptions": 665,
+      "adoption_rate": 0.5546,
+      "adopted_within_30d_rate": 0.4295,
+      "long_stay_60d_rate": 0.0759,
+      "median_days_to_adoption": 8.2528
+    },
+    {
+      "month": "2020-01",
+      "census": 904.6458,
+      "intakes": 1214,
+      "adoptions": 612,
+      "adoption_rate": 0.5041,
+      "adopted_within_30d_rate": 0.402,
+      "long_stay_60d_rate": 0.0675,
+      "median_days_to_adoption": 7.0552
+    },
+    {
+      "month": "2020-02",
+      "census": 821.9301,
+      "intakes": 1145,
+      "adoptions": 565,
+      "adoption_rate": 0.4934,
+      "adopted_within_30d_rate": 0.3817,
+      "long_stay_60d_rate": 0.0891,
+      "median_days_to_adoption": 7.1285
+    },
+    {
+      "month": "2020-03",
+      "census": 799.3571,
+      "intakes": 882,
+      "adoptions": 381,
+      "adoption_rate": 0.432,
+      "adopted_within_30d_rate": 0.2596,
+      "long_stay_60d_rate": 0.119,
+      "median_days_to_adoption": 19.0903
+    },
+    {
+      "month": "2020-04",
+      "census": 639.9038,
+      "intakes": 312,
+      "adoptions": 113,
+      "adoption_rate": 0.3622,
+      "adopted_within_30d_rate": 0.1218,
+      "long_stay_60d_rate": 0.1667,
+      "median_days_to_adoption": 40.8889
+    },
+    {
+      "month": "2020-05",
+      "census": 605.6046,
+      "intakes": 483,
+      "adoptions": 219,
+      "adoption_rate": 0.4534,
+      "adopted_within_30d_rate": 0.2174,
+      "long_stay_60d_rate": 0.2029,
+      "median_days_to_adoption": 32.7743
+    },
+    {
+      "month": "2020-06",
+      "census": 724.5814,
+      "intakes": 848,
+      "adoptions": 457,
+      "adoption_rate": 0.5389,
+      "adopted_within_30d_rate": 0.2358,
+      "long_stay_60d_rate": 0.1922,
+      "median_days_to_adoption": 36.934
+    },
+    {
+      "month": "2020-07",
+      "census": 862.5443,
+      "intakes": 779,
+      "adoptions": 366,
+      "adoption_rate": 0.4698,
+      "adopted_within_30d_rate": 0.2426,
+      "long_stay_60d_rate": 0.1284,
+      "median_days_to_adoption": 28.8035
+    },
+    {
+      "month": "2020-08",
+      "census": 865.1447,
+      "intakes": 850,
+      "adoptions": 478,
+      "adoption_rate": 0.5624,
+      "adopted_within_30d_rate": 0.3212,
+      "long_stay_60d_rate": 0.1494,
+      "median_days_to_adoption": 24.9309
+    },
+    {
+      "month": "2020-09",
+      "census": 894.2374,
+      "intakes": 872,
+      "adoptions": 497,
+      "adoption_rate": 0.57,
+      "adopted_within_30d_rate": 0.3028,
+      "long_stay_60d_rate": 0.164,
+      "median_days_to_adoption": 27.9951
+    },
+    {
+      "month": "2020-10",
+      "census": 943.2471,
+      "intakes": 874,
+      "adoptions": 475,
+      "adoption_rate": 0.5435,
+      "adopted_within_30d_rate": 0.2735,
+      "long_stay_60d_rate": 0.1499,
+      "median_days_to_adoption": 29.9785
+    },
+    {
+      "month": "2020-11",
+      "census": 950.9231,
+      "intakes": 676,
+      "adoptions": 342,
+      "adoption_rate": 0.5059,
+      "adopted_within_30d_rate": 0.3092,
+      "long_stay_60d_rate": 0.1021,
+      "median_days_to_adoption": 17.0052
+    },
+    {
+      "month": "2020-12",
+      "census": 812.357,
+      "intakes": 647,
+      "adoptions": 346,
+      "adoption_rate": 0.5348,
+      "adopted_within_30d_rate": 0.34,
+      "long_stay_60d_rate": 0.119,
+      "median_days_to_adoption": 18.9823
+    },
+    {
+      "month": "2021-01",
+      "census": 643.6896,
+      "intakes": 567,
+      "adoptions": 253,
+      "adoption_rate": 0.4462,
+      "adopted_within_30d_rate": 0.2963,
+      "long_stay_60d_rate": 0.0952,
+      "median_days_to_adoption": 17.3472
+    },
+    {
+      "month": "2021-02",
+      "census": 583.1373,
+      "intakes": 386,
+      "adoptions": 203,
+      "adoption_rate": 0.5259,
+      "adopted_within_30d_rate": 0.3238,
+      "long_stay_60d_rate": 0.1321,
+      "median_days_to_adoption": 19.009
+    },
+    {
+      "month": "2021-03",
+      "census": 555.0164,
+      "intakes": 732,
+      "adoptions": 350,
+      "adoption_rate": 0.4781,
+      "adopted_within_30d_rate": 0.3101,
+      "long_stay_60d_rate": 0.1025,
+      "median_days_to_adoption": 13.0094
+    },
+    {
+      "month": "2021-04",
+      "census": 634.6275,
+      "intakes": 894,
+      "adoptions": 478,
+      "adoption_rate": 0.5347,
+      "adopted_within_30d_rate": 0.3199,
+      "long_stay_60d_rate": 0.1253,
+      "median_days_to_adoption": 18.1149
+    },
+    {
+      "month": "2021-05",
+      "census": 751.5358,
+      "intakes": 1060,
+      "adoptions": 578,
+      "adoption_rate": 0.5453,
+      "adopted_within_30d_rate": 0.3321,
+      "long_stay_60d_rate": 0.0925,
+      "median_days_to_adoption": 17.1118
+    },
+    {
+      "month": "2021-06",
+      "census": 971.7006,
+      "intakes": 1316,
+      "adoptions": 820,
+      "adoption_rate": 0.6231,
+      "adopted_within_30d_rate": 0.4149,
+      "long_stay_60d_rate": 0.1216,
+      "median_days_to_adoption": 15.0476
+    },
+    {
+      "month": "2021-07",
+      "census": 985.046,
+      "intakes": 1348,
+      "adoptions": 861,
+      "adoption_rate": 0.6387,
+      "adopted_within_30d_rate": 0.4577,
+      "long_stay_60d_rate": 0.1039,
+      "median_days_to_adoption": 12.0903
+    },
+    {
+      "month": "2021-08",
+      "census": 935.9476,
+      "intakes": 1259,
+      "adoptions": 755,
+      "adoption_rate": 0.5997,
+      "adopted_within_30d_rate": 0.4329,
+      "long_stay_60d_rate": 0.0635,
+      "median_days_to_adoption": 12.3292
+    },
+    {
+      "month": "2021-09",
+      "census": 887.5344,
+      "intakes": 1205,
+      "adoptions": 759,
+      "adoption_rate": 0.6299,
+      "adopted_within_30d_rate": 0.4739,
+      "long_stay_60d_rate": 0.0888,
+      "median_days_to_adoption": 9.0215
+    },
+    {
+      "month": "2021-10",
+      "census": 849.7538,
+      "intakes": 1263,
+      "adoptions": 708,
+      "adoption_rate": 0.5606,
+      "adopted_within_30d_rate": 0.4086,
+      "long_stay_60d_rate": 0.0887,
+      "median_days_to_adoption": 11.0444
+    },
+    {
+      "month": "2021-11",
+      "census": 839.1486,
+      "intakes": 1016,
+      "adoptions": 610,
+      "adoption_rate": 0.6004,
+      "adopted_within_30d_rate": 0.437,
+      "long_stay_60d_rate": 0.0965,
+      "median_days_to_adoption": 12.9278
+    },
+    {
+      "month": "2021-12",
+      "census": 811.256,
+      "intakes": 992,
+      "adoptions": 560,
+      "adoption_rate": 0.5645,
+      "adopted_within_30d_rate": 0.4567,
+      "long_stay_60d_rate": 0.0837,
+      "median_days_to_adoption": 9.0163
+    }
+  ],
+  "data_as_of": "2022-03-04T11:25:00-06:00",
+  "series_ends": "2022-01-03",
+  "series_end_note": "The series stops 60 days before the data cutoff. An animal arriving later than that could not yet have been in the shelter for 60 days, so its long-stay rate would read as zero by construction."
+}

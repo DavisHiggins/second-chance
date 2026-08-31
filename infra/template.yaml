@@ -1,0 +1,988 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+
+Description: >
+  SecondChance: a serverless machine learning lifecycle for shelter adoption
+  forecasting at the Austin Animal Center.
+
+  The whole pipeline is here: scheduled ingestion from three public APIs into a
+  raw S3 landing zone, a Glue crawler and Redshift Serverless warehouse for the
+  joins, a SageMaker training pipeline, a real time inference endpoint fronted by
+  API Gateway, a weekly monitoring job that measures drift and model quality, and
+  the CloudWatch alarms plus SNS notifications that turn a bad number into an
+  email a human will actually read.
+
+  Deploy with:
+    sam build && sam deploy --guided --capabilities CAPABILITY_NAMED_IAM
+
+  Everything defaults to the smallest instance class that works. The cost note in
+  docs/03_COST_MODEL.md walks through the monthly bill.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: secondchance
+    Description: Prefix applied to every resource name so two deployments can coexist.
+    AllowedPattern: "^[a-z][a-z0-9-]{2,20}$"
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+
+  AlertEmail:
+    Type: String
+    Description: >
+      Address that receives drift and model quality alarms. AWS sends a
+      subscription confirmation to this address; the alarm will not deliver until
+      it is confirmed.
+    AllowedPattern: "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
+
+  RedshiftAdminUsername:
+    Type: String
+    Default: scadmin
+    NoEcho: false
+
+  DataCutoffDate:
+    Type: String
+    Default: "2022-03-04"
+    Description: >
+      Frozen cutoff used by the reproducible training run so that the paper's
+      numbers can be regenerated exactly. Live ingestion is not affected.
+
+  ModelApprovalMode:
+    Type: String
+    Default: Manual
+    AllowedValues: [Manual, Automatic]
+    Description: >
+      Manual means a human approves a retrained model before it serves traffic.
+      This is the default on purpose. See the governance section of the model card.
+
+  EnableScheduledIngest:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+
+Conditions:
+  IsProduction: !Equals [!Ref Environment, prod]
+  IngestEnabled: !Equals [!Ref EnableScheduledIngest, "true"]
+
+Globals:
+  Function:
+    Runtime: python3.11
+    MemorySize: 1024
+    Timeout: 300
+    Architectures: [arm64]        # Graviton is about 20 percent cheaper for this workload
+    Tracing: Active
+    Environment:
+      Variables:
+        PROJECT_NAME: !Ref ProjectName
+        ENVIRONMENT: !Ref Environment
+        RAW_BUCKET: !Ref RawDataBucket
+        CURATED_BUCKET: !Ref CuratedDataBucket
+        ARTIFACT_BUCKET: !Ref ModelArtifactBucket
+        ALERT_TOPIC_ARN: !Ref AlertTopic
+        DATA_CUTOFF_DATE: !Ref DataCutoffDate
+        POWERTOOLS_SERVICE_NAME: !Ref ProjectName
+        LOG_LEVEL: INFO
+
+Resources:
+  # ---------------------------------------------------------------------------
+  # Storage. Three buckets rather than three prefixes in one, because they have
+  # genuinely different lifecycles: raw is append only and never edited, curated
+  # is rebuilt on every run, artifacts must be retained for model provenance.
+  # ---------------------------------------------------------------------------
+  RawDataBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "${ProjectName}-raw-${Environment}-${AWS::AccountId}"
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !Ref DataKey
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          # Raw API responses are the audit trail. We never delete them, but after
+          # three months nobody reads them at interactive speed, so they can go to
+          # a colder class and stop costing real money.
+          - Id: ArchiveRawResponses
+            Status: Enabled
+            Transitions:
+              - StorageClass: INTELLIGENT_TIERING
+                TransitionInDays: 30
+              - StorageClass: GLACIER_IR
+                TransitionInDays: 120
+          - Id: ExpireOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 90
+
+  CuratedDataBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "${ProjectName}-curated-${Environment}-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !Ref DataKey
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  ModelArtifactBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "${ProjectName}-artifacts-${Environment}-${AWS::AccountId}"
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !Ref DataKey
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  DataKey:
+    Type: AWS::KMS::Key
+    DeletionPolicy: Retain
+    Properties:
+      Description: !Sub "${ProjectName} data and model artifact encryption"
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowAccountRoot
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
+          - Sid: AllowServiceUse
+            Effect: Allow
+            Principal:
+              Service:
+                - sagemaker.amazonaws.com
+                - redshift.amazonaws.com
+                - lambda.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey
+              - kms:DescribeKey
+            Resource: "*"
+
+  DataKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub "alias/${ProjectName}-${Environment}"
+      TargetKeyId: !Ref DataKey
+
+  # ---------------------------------------------------------------------------
+  # Ingestion. One function per source so a failure in the weather API cannot
+  # stop the shelter feed from landing, and so each can have its own schedule.
+  # ---------------------------------------------------------------------------
+  AustinIntakeIngestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${ProjectName}-ingest-austin-intakes-${Environment}"
+      CodeUri: ../src/
+      Handler: secondchance.ingest.handlers.ingest_austin_intakes
+      Description: Pull new Austin Animal Center intake rows and land them raw in S3.
+      Timeout: 600
+      MemorySize: 2048
+      Environment:
+        Variables:
+          SOCRATA_DATASET_ID: wter-evkm
+          SOCRATA_DOMAIN: data.austintexas.gov
+          SOCRATA_APP_TOKEN_SECRET: !Ref SocrataTokenSecret
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref RawDataBucket
+        - KMSEncryptPolicy:
+            KeyId: !Ref DataKey
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt AlertTopic.TopicName
+        - Statement:
+            - Effect: Allow
+              Action: [secretsmanager:GetSecretValue]
+              Resource: !Ref SocrataTokenSecret
+      Events:
+        DailySchedule:
+          Type: ScheduleV2
+          Properties:
+            # 09:15 UTC is 04:15 in Austin. Socrata is quiet then and the shelter's
+            # overnight entries have settled.
+            ScheduleExpression: "cron(15 9 * * ? *)"
+            State: !If [IngestEnabled, ENABLED, DISABLED]
+
+  AustinOutcomeIngestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${ProjectName}-ingest-austin-outcomes-${Environment}"
+      CodeUri: ../src/
+      Handler: secondchance.ingest.handlers.ingest_austin_outcomes
+      Timeout: 600
+      MemorySize: 2048
+      Environment:
+        Variables:
+          SOCRATA_DATASET_ID: 9t4d-g238
+          SOCRATA_DOMAIN: data.austintexas.gov
+          SOCRATA_APP_TOKEN_SECRET: !Ref SocrataTokenSecret
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref RawDataBucket
+        - KMSEncryptPolicy:
+            KeyId: !Ref DataKey
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt AlertTopic.TopicName
+        - Statement:
+            - Effect: Allow
+              Action: [secretsmanager:GetSecretValue]
+              Resource: !Ref SocrataTokenSecret
+      Events:
+        DailySchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: "cron(30 9 * * ? *)"
+            State: !If [IngestEnabled, ENABLED, DISABLED]
+
+  WeatherIngestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${ProjectName}-ingest-weather-${Environment}"
+      CodeUri: ../src/
+      Handler: secondchance.ingest.handlers.ingest_weather
+      Description: >
+        Pull observations from the National Weather Service API for the Austin
+        Camp Mabry station. The NWS API needs no key but does require a
+        descriptive User-Agent, which the client sets.
+      Environment:
+        Variables:
+          NWS_STATION_ID: KATT
+          NWS_GRID_OFFICE: EWX
+          NWS_USER_AGENT: "SecondChance/1.0 (UNC Charlotte DTSC 3601 student project)"
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref RawDataBucket
+        - KMSEncryptPolicy:
+            KeyId: !Ref DataKey
+      Events:
+        DailySchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: "cron(45 9 * * ? *)"
+            State: !If [IngestEnabled, ENABLED, DISABLED]
+
+  RescueGroupsIngestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${ProjectName}-ingest-rescuegroups-${Environment}"
+      CodeUri: ../src/
+      Handler: secondchance.ingest.handlers.ingest_rescuegroups
+      Description: >
+        Current adoptable listings from the RescueGroups.org API, used for the
+        public discovery page and for regional context on breed supply.
+      Environment:
+        Variables:
+          RESCUEGROUPS_SECRET_ARN: !Ref RescueGroupsSecret
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref RawDataBucket
+        - KMSEncryptPolicy:
+            KeyId: !Ref DataKey
+        - Statement:
+            - Effect: Allow
+              Action: [secretsmanager:GetSecretValue]
+              Resource: !Ref RescueGroupsSecret
+      Events:
+        SixHourlySchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: "rate(6 hours)"
+            State: !If [IngestEnabled, ENABLED, DISABLED]
+
+  # Breed structuring through Bedrock. Triggered by new raw intake objects rather
+  # than on a schedule, because the only time it has work to do is when a breed
+  # string we have never seen arrives.
+  BreedLabelingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${ProjectName}-breed-labeling-${Environment}"
+      CodeUri: ../src/
+      Handler: secondchance.labeling.handlers.label_new_breeds
+      Timeout: 600
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: anthropic.claude-3-5-sonnet-20241022-v2:0
+          BREED_REFERENCE_KEY: reference/breed_attributes_llm.psv
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref CuratedDataBucket
+        - S3ReadPolicy:
+            BucketName: !Ref RawDataBucket
+        - KMSEncryptPolicy:
+            KeyId: !Ref DataKey
+        - Statement:
+            - Effect: Allow
+              Action: [bedrock:InvokeModel]
+              Resource: !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-3-5-sonnet-*"
+
+  SecretsRotationNote:
+    Type: AWS::CloudFormation::WaitConditionHandle
+    Metadata:
+      Comment: >
+        Placeholder resource that exists only to carry this note. The two secrets
+        below are created empty. Populate them with the AWS CLI after the first
+        deploy; see docs/02_AWS_SETUP_RUNBOOK.md step 6. Never put a token in this
+        template.
+
+  SocrataTokenSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "${ProjectName}/${Environment}/socrata-app-token"
+      Description: >
+        Socrata application token for data.austintexas.gov. The API works without
+        one, but unauthenticated callers share a small throttling pool and will
+        start receiving 429 responses during a backfill.
+      KmsKeyId: !Ref DataKey
+
+  RescueGroupsSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "${ProjectName}/${Environment}/rescuegroups-api-key"
+      Description: RescueGroups.org API key, requested through their developer portal.
+      KmsKeyId: !Ref DataKey
+
+  # ---------------------------------------------------------------------------
+  # Warehouse. Redshift Serverless rather than a provisioned cluster: the
+  # workload is a few minutes of querying per day, and a provisioned dc2.large
+  # sitting idle is the single easiest way to burn a student budget.
+  # ---------------------------------------------------------------------------
+  RedshiftNamespace:
+    Type: AWS::RedshiftServerless::Namespace
+    Properties:
+      NamespaceName: !Sub "${ProjectName}-${Environment}"
+      AdminUsername: !Ref RedshiftAdminUsername
+      ManageAdminPassword: true      # AWS generates and rotates it in Secrets Manager
+      DbName: secondchance
+      KmsKeyId: !Ref DataKey
+      IamRoles:
+        - !GetAtt RedshiftRole.Arn
+      DefaultIamRoleArn: !GetAtt RedshiftRole.Arn
+      LogExports: [userlog, connectionlog, useractivitylog]
+
+  RedshiftWorkgroup:
+    Type: AWS::RedshiftServerless::Workgroup
+    Properties:
+      WorkgroupName: !Sub "${ProjectName}-${Environment}-wg"
+      NamespaceName: !Ref RedshiftNamespace
+      # 8 RPUs is the smallest setting. This dataset is 140,000 rows; anything
+      # larger is paying for capacity that will never be used.
+      BaseCapacity: 8
+      PubliclyAccessible: false
+      EnhancedVpcRouting: false
+
+  RedshiftRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-redshift-${Environment}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [redshift.amazonaws.com, redshift-serverless.amazonaws.com]
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ReadRawAndCurated
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [s3:GetObject, s3:ListBucket]
+                Resource:
+                  - !GetAtt RawDataBucket.Arn
+                  - !Sub "${RawDataBucket.Arn}/*"
+                  - !GetAtt CuratedDataBucket.Arn
+                  - !Sub "${CuratedDataBucket.Arn}/*"
+              - Effect: Allow
+                Action: [s3:PutObject]
+                Resource: !Sub "${CuratedDataBucket.Arn}/*"
+              - Effect: Allow
+                Action: [kms:Decrypt, kms:GenerateDataKey]
+                Resource: !GetAtt DataKey.Arn
+              - Effect: Allow
+                Action: [glue:GetTable, glue:GetTables, glue:GetDatabase, glue:GetDatabases, glue:GetPartitions]
+                Resource: "*"
+
+  GlueDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: !Sub "${ProjectName}_${Environment}"
+        Description: Raw landing zone catalogue for the SecondChance pipeline.
+
+  RawCrawler:
+    Type: AWS::Glue::Crawler
+    Properties:
+      Name: !Sub "${ProjectName}-raw-crawler-${Environment}"
+      Role: !GetAtt GlueRole.Arn
+      DatabaseName: !Ref GlueDatabase
+      Targets:
+        S3Targets:
+          - Path: !Sub "s3://${RawDataBucket}/austin/"
+          - Path: !Sub "s3://${RawDataBucket}/weather/"
+          - Path: !Sub "s3://${RawDataBucket}/rescuegroups/"
+      Schedule:
+        ScheduleExpression: "cron(0 10 * * ? *)"
+      SchemaChangePolicy:
+        UpdateBehavior: UPDATE_IN_DATABASE
+        DeleteBehavior: LOG
+
+  GlueRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-glue-${Environment}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: glue.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
+      Policies:
+        - PolicyName: ReadRaw
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [s3:GetObject, s3:ListBucket]
+                Resource:
+                  - !GetAtt RawDataBucket.Arn
+                  - !Sub "${RawDataBucket.Arn}/*"
+              - Effect: Allow
+                Action: [kms:Decrypt]
+                Resource: !GetAtt DataKey.Arn
+
+  # ---------------------------------------------------------------------------
+  # Training and serving.
+  # ---------------------------------------------------------------------------
+  SageMakerExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-sagemaker-${Environment}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sagemaker.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
+      Policies:
+        - PolicyName: DataAndArtifacts
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:ListBucket, s3:DeleteObject]
+                Resource:
+                  - !GetAtt CuratedDataBucket.Arn
+                  - !Sub "${CuratedDataBucket.Arn}/*"
+                  - !GetAtt ModelArtifactBucket.Arn
+                  - !Sub "${ModelArtifactBucket.Arn}/*"
+              - Effect: Allow
+                Action: [kms:Decrypt, kms:GenerateDataKey]
+                Resource: !GetAtt DataKey.Arn
+
+  ModelPackageGroup:
+    Type: AWS::SageMaker::ModelPackageGroup
+    Properties:
+      ModelPackageGroupName: !Sub "${ProjectName}-adoption-models"
+      ModelPackageGroupDescription: >
+        Registered SecondChance models. Every entry carries its training data
+        cutoff, its validation metrics, and a link to the model card revision that
+        describes it.
+
+  TrainingTriggerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${ProjectName}-start-training-${Environment}"
+      CodeUri: ../src/
+      Handler: secondchance.pipeline.handlers.start_training_job
+      Timeout: 120
+      Environment:
+        Variables:
+          SAGEMAKER_ROLE_ARN: !GetAtt SageMakerExecutionRole.Arn
+          MODEL_PACKAGE_GROUP: !Ref ModelPackageGroup
+          TRAINING_INSTANCE_TYPE: ml.m5.xlarge
+          MODEL_APPROVAL_MODE: !Ref ModelApprovalMode
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - sagemaker:CreateTrainingJob
+                - sagemaker:DescribeTrainingJob
+                - sagemaker:CreateModelPackage
+                - sagemaker:AddTags
+              Resource: "*"
+            - Effect: Allow
+              Action: iam:PassRole
+              Resource: !GetAtt SageMakerExecutionRole.Arn
+        - S3CrudPolicy:
+            BucketName: !Ref ModelArtifactBucket
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt AlertTopic.TopicName
+      Events:
+        WeeklyRetrain:
+          Type: ScheduleV2
+          Properties:
+            # Sunday 08:00 UTC. A week of new outcomes is enough to matter and the
+            # endpoint is quiet.
+            ScheduleExpression: "cron(0 8 ? * SUN *)"
+            State: ENABLED
+
+  PredictionApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${ProjectName}-api-${Environment}"
+      CodeUri: ../src/
+      Handler: secondchance.serve.handler.lambda_handler
+      Timeout: 30
+      MemorySize: 1536
+      Environment:
+        Variables:
+          SAGEMAKER_ENDPOINT_NAME: !Sub "${ProjectName}-endpoint-${Environment}"
+          MODEL_VERSION_TABLE: !Ref ModelVersionTable
+          PREDICTION_LOG_STREAM: !Ref PredictionLogStream
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [sagemaker:InvokeEndpoint]
+              Resource: !Sub "arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:endpoint/${ProjectName}-endpoint-${Environment}"
+        - DynamoDBReadPolicy:
+            TableName: !Ref ModelVersionTable
+        - KinesisCrudPolicy:
+            StreamName: !Ref PredictionLogStream
+      Events:
+        PredictAnimal:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PublicApi
+            Path: /v1/predict
+            Method: POST
+        BatchPredict:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PublicApi
+            Path: /v1/predict/batch
+            Method: POST
+        NeedsAttention:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PublicApi
+            Path: /v1/queue/needs-attention
+            Method: GET
+        AnimalDetail:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PublicApi
+            Path: /v1/animals/{animalId}
+            Method: GET
+        Health:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PublicApi
+            Path: /v1/health
+            Method: GET
+
+  PublicApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref Environment
+      CorsConfiguration:
+        AllowOrigins: ["*"]     # tighten to the site's domain before any real deployment
+        AllowHeaders: [content-type, authorization]
+        AllowMethods: [GET, POST, OPTIONS]
+      # Account-level throttling for the whole stage. A shelter dashboard makes a
+      # handful of requests a minute, so this is a runaway-loop backstop rather
+      # than a capacity decision.
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 100
+        ThrottlingRateLimit: 50
+      AccessLogSettings:
+        DestinationArn: !GetAtt ApiAccessLogGroup.Arn
+        Format: >
+          {"requestId":"$context.requestId","ip":"$context.identity.sourceIp",
+          "requestTime":"$context.requestTime","routeKey":"$context.routeKey",
+          "status":"$context.status","latency":"$context.responseLatency"}
+
+  ApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/apigateway/${ProjectName}-${Environment}"
+      RetentionInDays: 30
+
+  ModelVersionTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${ProjectName}-model-versions-${Environment}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: model_key
+          AttributeType: S
+      KeySchema:
+        - AttributeName: model_key
+          KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: !If [IsProduction, true, false]
+      SSESpecification:
+        SSEEnabled: true
+
+  # Every served prediction is logged. Without this there is nothing to compute
+  # drift against later, and "we will add logging when we need it" always means
+  # discovering you needed it three months ago.
+  PredictionLogStream:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      Name: !Sub "${ProjectName}-predictions-${Environment}"
+      StreamModeDetails:
+        StreamMode: ON_DEMAND
+      RetentionPeriodHours: 168
+      StreamEncryption:
+        EncryptionType: KMS
+        KeyId: !Ref DataKey
+
+  PredictionArchiveStream:
+    Type: AWS::KinesisFirehose::DeliveryStream
+    Properties:
+      DeliveryStreamName: !Sub "${ProjectName}-prediction-archive-${Environment}"
+      DeliveryStreamType: KinesisStreamAsSource
+      KinesisStreamSourceConfiguration:
+        KinesisStreamARN: !GetAtt PredictionLogStream.Arn
+        RoleARN: !GetAtt FirehoseRole.Arn
+      ExtendedS3DestinationConfiguration:
+        BucketARN: !GetAtt CuratedDataBucket.Arn
+        Prefix: "predictions/dt=!{timestamp:yyyy-MM-dd}/"
+        ErrorOutputPrefix: "predictions-errors/"
+        RoleARN: !GetAtt FirehoseRole.Arn
+        BufferingHints:
+          IntervalInSeconds: 300
+          SizeInMBs: 64
+        CompressionFormat: GZIP
+
+  FirehoseRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-firehose-${Environment}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: firehose.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WriteCurated
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [s3:PutObject, s3:GetBucketLocation, s3:ListBucket, s3:AbortMultipartUpload]
+                Resource:
+                  - !GetAtt CuratedDataBucket.Arn
+                  - !Sub "${CuratedDataBucket.Arn}/*"
+              - Effect: Allow
+                Action: [kinesis:GetRecords, kinesis:GetShardIterator, kinesis:DescribeStream, kinesis:ListShards]
+                Resource: !GetAtt PredictionLogStream.Arn
+              - Effect: Allow
+                Action: [kms:Decrypt, kms:GenerateDataKey]
+                Resource: !GetAtt DataKey.Arn
+
+  # ---------------------------------------------------------------------------
+  # Monitoring. The reason this project is a lifecycle and not a script.
+  # ---------------------------------------------------------------------------
+  MonitoringFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${ProjectName}-monitor-${Environment}"
+      CodeUri: ../src/
+      Handler: secondchance.monitor.handlers.run_monitoring_cycle
+      Timeout: 900
+      MemorySize: 3008
+      Environment:
+        Variables:
+          BASELINE_STATS_KEY: monitoring/baseline_statistics.json
+          PSI_WARNING: "0.10"
+          PSI_CRITICAL: "0.25"
+          AUC_RELATIVE_DROP_WARNING: "0.03"
+          AUC_RELATIVE_DROP_CRITICAL: "0.07"
+          BEDROCK_MODEL_ID: anthropic.claude-3-5-sonnet-20241022-v2:0
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref CuratedDataBucket
+        - S3ReadPolicy:
+            BucketName: !Ref ModelArtifactBucket
+        - KMSEncryptPolicy:
+            KeyId: !Ref DataKey
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt AlertTopic.TopicName
+        - CloudWatchPutMetricPolicy: {}
+        - Statement:
+            - Effect: Allow
+              Action: [bedrock:InvokeModel]
+              Resource: !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-3-5-sonnet-*"
+            - Effect: Allow
+              Action: [lambda:InvokeFunction]
+              Resource: !GetAtt TrainingTriggerFunction.Arn
+            - Effect: Allow
+              Action: [redshift-data:ExecuteStatement, redshift-data:GetStatementResult, redshift-data:DescribeStatement]
+              Resource: "*"
+      Events:
+        WeeklyCheck:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: "cron(0 7 ? * MON *)"
+            State: ENABLED
+
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${ProjectName}-alerts-${Environment}"
+      DisplayName: SecondChance model and data alerts
+      KmsMasterKeyId: !Ref DataKey
+
+  AlertSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
+
+  # Custom metrics published by the monitoring job. The alarms below turn those
+  # numbers into email. Thresholds match src/secondchance/monitor/drift.py so the
+  # offline analysis and the deployed system agree on what "bad" means.
+  DataDriftAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectName}-data-drift-${Environment}"
+      AlarmDescription: >
+        Population stability index above 0.25 on any monitored feature. The animals
+        arriving no longer look like the animals the model learned from.
+      Namespace: !Sub "SecondChance/${Environment}"
+      MetricName: MaxFeaturePSI
+      Statistic: Maximum
+      Period: 86400
+      EvaluationPeriods: 1
+      Threshold: 0.25
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertTopic]
+      OKActions: [!Ref AlertTopic]
+
+  ModelQualityAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectName}-model-quality-${Environment}"
+      AlarmDescription: >
+        Rolling 30 day AUC has fallen more than 7 percent below the validated
+        baseline. Two consecutive breaches required, so one strange week does not
+        page anybody.
+      Namespace: !Sub "SecondChance/${Environment}"
+      MetricName: RollingAUCRelativeDrop
+      Statistic: Average
+      Period: 604800
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: 0.07
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertTopic]
+
+  CalibrationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectName}-calibration-${Environment}"
+      AlarmDescription: >
+        Mean predicted probability differs from the observed rate by more than 10
+        points. The ranking may still be fine, but the numbers on the screen have
+        stopped meaning what they say, and staff read them as percentages.
+      Namespace: !Sub "SecondChance/${Environment}"
+      MetricName: CalibrationGapAbsolute
+      Statistic: Average
+      Period: 604800
+      EvaluationPeriods: 1
+      Threshold: 0.10
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertTopic]
+
+  IngestFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectName}-ingest-failures-${Environment}"
+      AlarmDescription: Any ingestion Lambda error in a 24 hour window.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref AustinIntakeIngestFunction
+      Statistic: Sum
+      Period: 86400
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertTopic]
+
+  StaleDataAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectName}-stale-data-${Environment}"
+      AlarmDescription: >
+        No new shelter rows landed for 48 hours. Silence looks identical to
+        "nothing changed" unless you check for it, and a dashboard quietly serving
+        last week's numbers is worse than one that admits it is broken.
+      Namespace: !Sub "SecondChance/${Environment}"
+      MetricName: HoursSinceLastIngest
+      Statistic: Maximum
+      Period: 3600
+      EvaluationPeriods: 1
+      Threshold: 48
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: breaching
+      AlarmActions: [!Ref AlertTopic]
+
+  EndpointLatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectName}-endpoint-latency-${Environment}"
+      AlarmDescription: SageMaker endpoint p99 latency above 800 ms for 15 minutes.
+      Namespace: AWS/SageMaker
+      MetricName: ModelLatency
+      Dimensions:
+        - Name: EndpointName
+          Value: !Sub "${ProjectName}-endpoint-${Environment}"
+        - Name: VariantName
+          Value: AllTraffic
+      ExtendedStatistic: p99
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 800000        # microseconds
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertTopic]
+
+  OperationsDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub "${ProjectName}-${Environment}"
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric", "x": 0, "y": 0, "width": 12, "height": 6,
+              "properties": {
+                "title": "Model quality",
+                "metrics": [
+                  ["SecondChance/${Environment}", "RollingAUC"],
+                  [".", "RollingAUCRelativeDrop"],
+                  [".", "CalibrationGapAbsolute"]
+                ],
+                "period": 604800, "stat": "Average", "region": "${AWS::Region}",
+                "annotations": {"horizontal": [{"label": "AUC drop critical", "value": 0.07}]}
+              }
+            },
+            {
+              "type": "metric", "x": 12, "y": 0, "width": 12, "height": 6,
+              "properties": {
+                "title": "Input drift",
+                "metrics": [
+                  ["SecondChance/${Environment}", "MaxFeaturePSI"],
+                  [".", "MeanFeaturePSI"],
+                  [".", "FeaturesInCriticalDrift"]
+                ],
+                "period": 86400, "stat": "Maximum", "region": "${AWS::Region}",
+                "annotations": {"horizontal": [{"label": "PSI critical", "value": 0.25}]}
+              }
+            },
+            {
+              "type": "metric", "x": 0, "y": 6, "width": 12, "height": 6,
+              "properties": {
+                "title": "Pipeline health",
+                "metrics": [
+                  ["SecondChance/${Environment}", "HoursSinceLastIngest"],
+                  ["AWS/Lambda", "Errors", "FunctionName", "${ProjectName}-ingest-austin-intakes-${Environment}"],
+                  ["AWS/Lambda", "Duration", "FunctionName", "${ProjectName}-monitor-${Environment}"]
+                ],
+                "period": 3600, "stat": "Maximum", "region": "${AWS::Region}"
+              }
+            },
+            {
+              "type": "metric", "x": 12, "y": 6, "width": 12, "height": 6,
+              "properties": {
+                "title": "Serving",
+                "metrics": [
+                  ["AWS/SageMaker", "ModelLatency", "EndpointName", "${ProjectName}-endpoint-${Environment}", "VariantName", "AllTraffic"],
+                  ["AWS/SageMaker", "Invocations", ".", ".", ".", "."],
+                  ["AWS/SageMaker", "Invocation4XXErrors", ".", ".", ".", "."]
+                ],
+                "period": 300, "stat": "Average", "region": "${AWS::Region}"
+              }
+            }
+          ]
+        }
+
+Outputs:
+  ApiEndpoint:
+    Description: Base URL the website calls.
+    Value: !Sub "https://${PublicApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+    Export:
+      Name: !Sub "${ProjectName}-api-endpoint-${Environment}"
+
+  RawBucketName:
+    Value: !Ref RawDataBucket
+
+  CuratedBucketName:
+    Value: !Ref CuratedDataBucket
+
+  ArtifactBucketName:
+    Value: !Ref ModelArtifactBucket
+
+  RedshiftWorkgroupName:
+    Value: !Ref RedshiftWorkgroup
+
+  SageMakerRoleArn:
+    Value: !GetAtt SageMakerExecutionRole.Arn
+
+  AlertTopicArn:
+    Value: !Ref AlertTopic
+
+  DashboardUrl:
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${ProjectName}-${Environment}"
