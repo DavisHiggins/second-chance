@@ -43,6 +43,9 @@ coverage.xml
 # Node, for the presentation builder
 node_modules/
 package-lock.json
+# The web app is a real deployment target, so its lockfile is tracked: a build
+# on Vercel has to resolve the same tree this one did.
+!/web/package-lock.json
 
 # Build intermediates for the PDFs
 deliverables/_html/
