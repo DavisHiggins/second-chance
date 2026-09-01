@@ -24,23 +24,23 @@ function sparklinePath(values: number[]): string {
 }
 
 /**
- * Delta polarity is hardcoded per tile, never inferred from the sign. A census
- * going up is not good news; an adoption rate going up is.
+ * Delta colour follows the sign of the number as it is printed: a value that
+ * reads negative is red, a value that reads positive is green. A change too
+ * small to survive rounding is neutral, and so is one that was not measured.
  */
-function deltaTone(value: number | null, upIsGood: boolean): "good" | "serious" | "neutral" {
+function deltaTone(value: number | null): "good" | "critical" | "neutral" {
   if (value === null || Math.abs(value) < 0.0005) return "neutral";
-  const isUp = value > 0;
-  return isUp === upIsGood ? "good" : "serious";
+  return value > 0 ? "good" : "critical";
 }
 
 export function StatTile({ tile }: { tile: DashboardTile }) {
   const reducedMotion = useReducedMotion();
-  const tone = deltaTone(tile.delta.value, tile.delta.upIsGood);
+  const tone = deltaTone(tile.delta.value);
   const color =
     tone === "good"
       ? "var(--status-good)"
-      : tone === "serious"
-        ? "var(--status-serious)"
+      : tone === "critical"
+        ? "var(--status-critical)"
         : "var(--ink-muted)";
   const Arrow =
     tile.delta.value === null || tone === "neutral"

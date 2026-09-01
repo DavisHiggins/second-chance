@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Menu, Moon, Rows3, Rows4, Sun, X } from "lucide-react";
+import { Menu, Moon, Sun, X } from "lucide-react";
 import { NAV, SHELL } from "@/lib/content";
 import { DUR, EASE_OUT } from "@/lib/motion";
 import FreshnessChip from "@/components/shell/FreshnessChip";
@@ -120,7 +120,7 @@ export function Header({
   dataAsOf: string;
   usingFallback: boolean;
 }) {
-  const { theme, density, setTheme, setDensity } = usePreferences();
+  const { theme, setTheme } = usePreferences();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const pathname = usePathname();
 
@@ -164,16 +164,6 @@ export function Header({
           </Link>
         </div>
 
-        <IconButton
-          label={`Density: ${density === "compact" ? SHELL.densityCompact : SHELL.densityComfortable}`}
-          onClick={() => setDensity(density === "compact" ? "comfortable" : "compact")}
-        >
-          {density === "compact" ? (
-            <Rows4 size={20} strokeWidth={1.5} />
-          ) : (
-            <Rows3 size={20} strokeWidth={1.5} />
-          )}
-        </IconButton>
         <IconButton
           label={`Theme: ${theme === "dark" ? SHELL.themeDark : SHELL.themeLight}`}
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
