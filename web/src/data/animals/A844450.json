@@ -1,0 +1,119 @@
+{
+  "animal_id": "A844450",
+  "episode_id": "A844450-1",
+  "name": "Hackle",
+  "name_is_shelter_assigned": true,
+  "animal_type": "Dog",
+  "breed": "Pit Bull",
+  "breed_primary_group": "Not AKC recognised",
+  "color": "Blue/White",
+  "age_band": "adult",
+  "age_at_intake_days": 2191.5,
+  "sex_upon_intake": "Intact Male",
+  "intake_type": "Stray",
+  "intake_condition": "Injured",
+  "intake_datetime": "2021-10-16T12:10:00",
+  "days_in_care": 138,
+  "photo_url": null,
+  "p_adopt_7d": 0.0322,
+  "p_adopt_14d": 0.1003,
+  "p_adopt_30d": 0.1529,
+  "p_long_stay_60d": 0.2953,
+  "expected_days_in_shelter": 73.1,
+  "risk_band": "warning",
+  "drivers": [
+    {
+      "feature": "intake_condition_Normal",
+      "label": "did not arrive in normal condition",
+      "contribution": -0.6674,
+      "direction": "lowers"
+    },
+    {
+      "feature": "breed_bully_type",
+      "label": "carries a bully-type breed label",
+      "contribution": -0.2012,
+      "direction": "lowers"
+    },
+    {
+      "feature": "name_length",
+      "label": "has a name on record",
+      "contribution": 0.1807,
+      "direction": "raises"
+    },
+    {
+      "feature": "name_is_shelter_assigned",
+      "label": "came in with an owner's name",
+      "contribution": 0.1742,
+      "direction": "raises"
+    }
+  ],
+  "survival_curve": [
+    {
+      "day": 1,
+      "still_in_shelter": null
+    },
+    {
+      "day": 7,
+      "still_in_shelter": null
+    },
+    {
+      "day": 14,
+      "still_in_shelter": null
+    },
+    {
+      "day": 30,
+      "still_in_shelter": null
+    },
+    {
+      "day": 60,
+      "still_in_shelter": null
+    },
+    {
+      "day": 90,
+      "still_in_shelter": null
+    },
+    {
+      "day": 180,
+      "still_in_shelter": null
+    }
+  ],
+  "suggested_channel": "foster recruitment",
+  "timeline": [
+    {
+      "event": "intake",
+      "at": "2021-10-16T12:10:00",
+      "detail": "Stray, Injured condition"
+    }
+  ],
+  "similar_animals": [
+    {
+      "animal_id": "A646712",
+      "name": "Marley",
+      "breed": "Labrador Retriever/Flat Coat Retriever",
+      "days_to_outcome": 2.0,
+      "outcome": "Adoption",
+      "similarity": 1.0
+    },
+    {
+      "animal_id": "A668664",
+      "name": "Xavier",
+      "breed": "Pit Bull Mix",
+      "days_to_outcome": 95.0,
+      "outcome": "Adoption",
+      "similarity": 1.0
+    },
+    {
+      "animal_id": "A668664",
+      "name": "Xavier",
+      "breed": "Pit Bull Mix",
+      "days_to_outcome": 18.0,
+      "outcome": "Adoption",
+      "similarity": 1.0
+    }
+  ],
+  "actual_outcome": {
+    "note": "This animal's real outcome, shown in the demo only so a reviewer can check the prediction against what happened. A live deployment would not have it at scoring time.",
+    "outcome_type": "Transfer",
+    "days_to_outcome": 51.0
+  }
+}

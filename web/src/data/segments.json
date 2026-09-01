@@ -1,0 +1,137 @@
+{
+  "segments": [
+    {
+      "dimension": "life stage",
+      "level": "adult",
+      "n": 2908,
+      "median_expected_days": 16.6,
+      "median_p_adopt_30": 0.2745
+    },
+    {
+      "dimension": "life stage",
+      "level": "juvenile",
+      "n": 1491,
+      "median_expected_days": 11.7,
+      "median_p_adopt_30": 0.511
+    },
+    {
+      "dimension": "life stage",
+      "level": "neonate",
+      "n": 5101,
+      "median_expected_days": 23.0,
+      "median_p_adopt_30": 0.1235
+    },
+    {
+      "dimension": "life stage",
+      "level": "puppy_kitten",
+      "n": 3268,
+      "median_expected_days": 7.1,
+      "median_p_adopt_30": 0.6877
+    },
+    {
+      "dimension": "life stage",
+      "level": "senior",
+      "n": 1358,
+      "median_expected_days": 10.5,
+      "median_p_adopt_30": 0.1523
+    },
+    {
+      "dimension": "life stage",
+      "level": "young_adult",
+      "n": 6039,
+      "median_expected_days": 15.1,
+      "median_p_adopt_30": 0.3419
+    },
+    {
+      "dimension": "species",
+      "level": "Cat",
+      "n": 8539,
+      "median_expected_days": 16.2,
+      "median_p_adopt_30": 0.2927
+    },
+    {
+      "dimension": "species",
+      "level": "Dog",
+      "n": 11626,
+      "median_expected_days": 12.3,
+      "median_p_adopt_30": 0.3936
+    },
+    {
+      "dimension": "breed group",
+      "level": "Domestic cat",
+      "n": 8175,
+      "median_expected_days": 16.4,
+      "median_p_adopt_30": 0.2927
+    },
+    {
+      "dimension": "breed group",
+      "level": "Foundation Stock Service",
+      "n": 388,
+      "median_expected_days": 18.2,
+      "median_p_adopt_30": 0.4577
+    },
+    {
+      "dimension": "breed group",
+      "level": "Herding",
+      "n": 1937,
+      "median_expected_days": 12.7,
+      "median_p_adopt_30": 0.511
+    },
+    {
+      "dimension": "breed group",
+      "level": "Hound",
+      "n": 721,
+      "median_expected_days": 9.1,
+      "median_p_adopt_30": 0.511
+    },
+    {
+      "dimension": "breed group",
+      "level": "Non-Sporting",
+      "n": 326,
+      "median_expected_days": 5.2,
+      "median_p_adopt_30": 0.2745
+    },
+    {
+      "dimension": "breed group",
+      "level": "Not AKC recognised",
+      "n": 2331,
+      "median_expected_days": 23.5,
+      "median_p_adopt_30": 0.2588
+    },
+    {
+      "dimension": "breed group",
+      "level": "Pedigree cat",
+      "n": 364,
+      "median_expected_days": 11.7,
+      "median_p_adopt_30": 0.3419
+    },
+    {
+      "dimension": "breed group",
+      "level": "Sporting",
+      "n": 2054,
+      "median_expected_days": 13.9,
+      "median_p_adopt_30": 0.4577
+    },
+    {
+      "dimension": "breed group",
+      "level": "Terrier",
+      "n": 815,
+      "median_expected_days": 9.4,
+      "median_p_adopt_30": 0.3484
+    },
+    {
+      "dimension": "breed group",
+      "level": "Toy",
+      "n": 1690,
+      "median_expected_days": 5.5,
+      "median_p_adopt_30": 0.422
+    },
+    {
+      "dimension": "breed group",
+      "level": "Working",
+      "n": 1364,
+      "median_expected_days": 10.5,
+      "median_p_adopt_30": 0.4211
+    }
+  ]
+}

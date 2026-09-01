@@ -1,0 +1,445 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   SecondChance design tokens. Structure and scales are fixed by
+   DESIGN_SYSTEM.md; the hues are the logo's — navy #05274C and teal #0A9E84.
+   A raw hex in a component is a bug: everything resolves through these.
+   --------------------------------------------------------------------------- */
+
+:root {
+  /* Brand. Sampled from logo.png: the navy of the dog and the closing arc,
+     the teal of the arrow that reopens it. Everything else is derived. */
+  --brand-navy: #05274c;
+  --brand-navy-deep: #041d38;
+  --brand-teal: #0a9e84;
+  --brand-teal-strong: #0a7a66; /* passes 4.5:1 on light surfaces, so text may use it */
+  --brand-teal-soft: #e8f6f1;
+
+  /* The footer band is the one place the navy is a ground rather than an ink.
+     It holds its colour in both themes: a signature, not a surface. */
+  --brand-band: var(--brand-navy);
+  --brand-band-ink: #e8f0ef;
+  --brand-band-ink-muted: #93aab8;
+  --brand-band-hairline: rgba(232, 240, 239, 0.16);
+  --brand-band-accent: #4fd8bc; /* the teal has to lift on navy in both themes */
+
+  /* Accent role. Components ask for the role, never the brand hue directly,
+     so the dark theme can substitute a brighter teal without edits. */
+  --accent: var(--brand-teal);
+  --accent-strong: var(--brand-teal-strong);
+  --accent-soft: var(--brand-teal-soft);
+  --accent-contrast: #ffffff;
+
+  /* Surfaces and ink, light. Neutrals are cooled toward the navy so nothing
+     on the page fights the mark. */
+  --surface-page: #f6f8f8;
+  --surface-card: #fcfdfd;
+  --surface-raised: #ffffff;
+  --surface-sunken: #edf1f1;
+  --ink-primary: #0a1620;
+  --ink-secondary: #4c5a63;
+  --ink-muted: #7c8b94;
+  --border-hairline: rgba(5, 39, 76, 0.12);
+  --grid-line: #dce4e5;
+  --axis-line: #b6c3c6;
+
+  /* Categorical series, fixed slot order. Never cycle, never add a ninth.
+     Slot 1 is the brand teal; the blue it displaced moved to slot 3, which
+     keeps eight distinct hues rather than putting teal next to a green. */
+  --series-1: #0a9e84;
+  --series-2: #eb6834;
+  --series-3: #2a78d6;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #4a3aa7;
+  --series-8: #e34948;
+
+  /* Sequential ramp: pale mint through the brand teal to the brand navy.
+     Interpolated in OKLab, so lightness falls evenly across all thirteen. */
+  --ramp-100: #e8f6f1;
+  --ramp-150: #cbe7de;
+  --ramp-200: #add9cb;
+  --ramp-250: #8ecab9;
+  --ramp-300: #6ebba7;
+  --ramp-350: #4aad95;
+  --ramp-400: #0a9e84;
+  --ramp-450: #06897b;
+  --ramp-500: #037572;
+  --ramp-550: #026169;
+  --ramp-600: #034d60;
+  --ramp-650: #043a56;
+  --ramp-700: #05274c;
+
+  /* Diverging midpoint */
+  --diverging-mid: #ecf0f0;
+
+  /* Status colours. Fixed, never themed, never reused as a series colour. */
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+
+  /* Type */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
+
+  /* Space, 4px base */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 40px;
+  --space-8: 48px;
+  --space-9: 64px;
+  --space-10: 80px;
+  --space-11: 96px;
+  --space-12: 128px;
+
+  /* Shape */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* Elevation: hairline plus a soft shadow, never a shadow alone. Tinted with
+     the navy rather than black, which keeps shadows from going grey-brown. */
+  --elev-0: none;
+  --elev-1: 0 1px 2px rgba(5, 39, 76, 0.05), 0 1px 1px rgba(5, 39, 76, 0.04);
+  --elev-2: 0 2px 6px rgba(5, 39, 76, 0.06), 0 1px 2px rgba(5, 39, 76, 0.05);
+  --elev-3: 0 8px 24px rgba(5, 39, 76, 0.09), 0 2px 6px rgba(5, 39, 76, 0.05);
+  --elev-4: 0 20px 48px rgba(5, 39, 76, 0.12), 0 4px 12px rgba(5, 39, 76, 0.06);
+
+  --focus-ring: 0 0 0 2px var(--surface-card), 0 0 0 4px var(--accent);
+
+  /* Motion */
+  --dur-instant: 90ms;
+  --dur-fast: 160ms;
+  --dur-base: 240ms;
+  --dur-slow: 420ms;
+  --dur-deliberate: 720ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Density. Rewritten by [data-density="compact"]. */
+  --row-height: 88px;
+  --table-row-height: 48px;
+  --card-padding: var(--space-5);
+}
+
+[data-theme="dark"] {
+  /* The dark ground is the brand navy taken down, not a neutral black, so the
+     logo mark sits on its own colour family in both themes. */
+  --surface-page: #06111b;
+  --surface-card: #0c1b27;
+  --surface-raised: #12242f;
+  --surface-sunken: #081521;
+  --ink-primary: #f2f7f7;
+  --ink-secondary: #a9bcc4;
+  --ink-muted: #7c8d96;
+  --border-hairline: rgba(190, 220, 225, 0.14);
+  --grid-line: #1c2e3a;
+  --axis-line: #2a3e4a;
+
+  /* Brand teal at 4.5:1 on this ground needs lifting; the navy is the ground
+     here, so it stops being an ink and becomes the surface. */
+  --accent: #2fc3a5;
+  --accent-strong: #4fd8bc;
+  --accent-soft: rgba(47, 195, 165, 0.14);
+  --accent-contrast: #04212c;
+
+  --brand-band: var(--brand-navy-deep);
+
+  --series-1: #2fc3a5;
+  --series-2: #d95926;
+  --series-3: #3987e5;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #22a04a;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+
+  /* The ramp inverts: on a navy ground the dark end has to be the light one. */
+  --ramp-100: #052033;
+  --ramp-150: #06293f;
+  --ramp-200: #06334b;
+  --ramp-250: #063e57;
+  --ramp-300: #054a62;
+  --ramp-350: #04566b;
+  --ramp-400: #036372;
+  --ramp-450: #027077;
+  --ramp-500: #027e7c;
+  --ramp-550: #068c81;
+  --ramp-600: #1f9a8b;
+  --ramp-650: #4fb8a4;
+  --ramp-700: #8ed6c4;
+
+  --diverging-mid: #2a3e4a;
+
+  /* Shadows do almost nothing on a dark ground: lean on the raised surface
+     and a brighter hairline instead of a deeper shadow. */
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --elev-2: 0 2px 6px rgba(0, 0, 0, 0.45);
+  --elev-3: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --elev-4: 0 20px 48px rgba(0, 0, 0, 0.55);
+
+  color-scheme: dark;
+}
+
+[data-density="compact"] {
+  --row-height: 64px;
+  --table-row-height: 36px;
+  --card-padding: var(--space-4);
+}
+
+@theme inline {
+  --color-page: var(--surface-page);
+  --color-card: var(--surface-card);
+  --color-raised: var(--surface-raised);
+  --color-sunken: var(--surface-sunken);
+  --color-ink: var(--ink-primary);
+  --color-ink-secondary: var(--ink-secondary);
+  --color-ink-muted: var(--ink-muted);
+  --color-hairline: var(--border-hairline);
+  --color-grid: var(--grid-line);
+  --color-axis: var(--axis-line);
+
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-teal: var(--brand-teal);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-contrast: var(--accent-contrast);
+
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
+  --color-series-4: var(--series-4);
+  --color-series-5: var(--series-5);
+  --color-series-6: var(--series-6);
+  --color-series-7: var(--series-7);
+  --color-series-8: var(--series-8);
+
+  --color-ramp-100: var(--ramp-100);
+  --color-ramp-250: var(--ramp-250);
+  --color-ramp-400: var(--ramp-400);
+  --color-ramp-550: var(--ramp-550);
+  --color-ramp-700: var(--ramp-700);
+
+  --color-good: var(--status-good);
+  --color-warning: var(--status-warning);
+  --color-serious: var(--status-serious);
+  --color-critical: var(--status-critical);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --spacing-1: var(--space-1);
+  --spacing-2: var(--space-2);
+  --spacing-3: var(--space-3);
+  --spacing-4: var(--space-4);
+  --spacing-5: var(--space-5);
+  --spacing-6: var(--space-6);
+  --spacing-7: var(--space-7);
+  --spacing-8: var(--space-8);
+  --spacing-9: var(--space-9);
+  --spacing-10: var(--space-10);
+  --spacing-11: var(--space-11);
+  --spacing-12: var(--space-12);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  --shadow-elev-1: var(--elev-1);
+  --shadow-elev-2: var(--elev-2);
+  --shadow-elev-3: var(--elev-3);
+  --shadow-elev-4: var(--elev-4);
+}
+
+/* --------------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  border-color: var(--border-hairline);
+}
+
+html {
+  background: var(--surface-page);
+}
+
+body {
+  background: var(--surface-page);
+  color: var(--ink-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+/* Type scale. Roles, not sizes: never set a font-size in a component. */
+.t-hero {
+  font-size: 44px;
+  line-height: 1.04;
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  font-variant-numeric: tabular-nums;
+}
+.t-display {
+  font-size: 32px;
+  line-height: 1.12;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+}
+.t-title {
+  font-size: 22px;
+  line-height: 1.22;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+}
+.t-subtitle {
+  font-size: 17px;
+  line-height: 1.35;
+  font-weight: 500;
+  letter-spacing: -0.006em;
+}
+.t-body {
+  font-size: 15px;
+  line-height: 1.55;
+  font-weight: 400;
+}
+.t-small {
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 400;
+}
+.t-caption {
+  font-size: 11.5px;
+  line-height: 1.35;
+  font-weight: 500;
+  letter-spacing: 0.012em;
+}
+.t-overline {
+  font-size: 11px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Skeleton shimmer. 6 percent opacity: a loading state must not be the most
+   eye-catching thing on the page. */
+.skeleton {
+  background-color: var(--surface-sunken);
+  background-image: linear-gradient(
+    90deg,
+    rgba(127, 127, 127, 0) 0%,
+    rgba(127, 127, 127, 0.06) 50%,
+    rgba(127, 127, 127, 0) 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: sc-shimmer 1400ms linear infinite;
+}
+
+@keyframes sc-shimmer {
+  from {
+    background-position: -100% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+
+/* The one pulse in the product, reserved for a screen that might be lying. */
+.freshness-pulse {
+  animation: sc-pulse 3s ease-in-out infinite;
+}
+
+@keyframes sc-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton,
+  .freshness-pulse {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Recharts puts a focus outline on its wrapper; the ring belongs to real
+   controls only. */
+.recharts-wrapper:focus,
+.recharts-surface:focus {
+  outline: none;
+}
+
+/* Brand mark. Two cuts of the same file — the navy one for light grounds, the
+   pale one for dark. Exactly one is ever displayed, chosen by the same
+   attribute the pre-paint bootstrap sets, so there is no flash and no swap. */
+.brand-mark-dark {
+  display: none;
+}
+[data-theme="dark"] .brand-mark-light {
+  display: none;
+}
+[data-theme="dark"] .brand-mark-dark {
+  display: block;
+}
+
+.brand-band {
+  background: var(--brand-band);
+  color: var(--brand-band-ink);
+}
+.brand-band .t-overline {
+  color: var(--brand-band-ink-muted);
+}
+/* The page-level focus ring is drawn against --surface-card, which is not the
+   colour under it here. The band draws its own. */
+.brand-band a:focus-visible {
+  box-shadow: 0 0 0 2px var(--brand-band), 0 0 0 4px var(--brand-band-accent);
+}
+
+@media print {
+  /* The navy band would eat a print cartridge and gains nothing on paper. */
+  .brand-band,
+  .brand-band .t-overline {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #ffffff;
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "animal_id": "A843521",
+  "episode_id": "A843521-1",
+  "name": "Teenee",
+  "name_is_shelter_assigned": true,
+  "animal_type": "Cat",
+  "breed": "Domestic Shorthair",
+  "breed_primary_group": "Domestic cat",
+  "color": "Gray/White",
+  "age_band": "senior",
+  "age_at_intake_days": 3652.5,
+  "sex_upon_intake": "Spayed Female",
+  "intake_type": "Stray",
+  "intake_condition": "Sick",
+  "intake_datetime": "2021-10-02T13:48:00",
+  "days_in_care": 152,
+  "photo_url": null,
+  "p_adopt_7d": 0.0395,
+  "p_adopt_14d": 0.0474,
+  "p_adopt_30d": 0.0742,
+  "p_long_stay_60d": 0.2953,
+  "expected_days_in_shelter": 33.3,
+  "risk_band": "warning",
+  "drivers": [
+    {
+      "feature": "intake_condition_Normal",
+      "label": "did not arrive in normal condition",
+      "contribution": -0.7982,
+      "direction": "lowers"
+    },
+    {
+      "feature": "age_at_intake_days",
+      "label": "older than most adopters ask for",
+      "contribution": -0.5077,
+      "direction": "lowers"
+    },
+    {
+      "feature": "name_length",
+      "label": "has a name on record",
+      "contribution": 0.3119,
+      "direction": "raises"
+    },
+    {
+      "feature": "breed_primary_group_Domestic_cat",
+      "label": "breed primary group Domestic cat",
+      "contribution": -0.1246,
+      "direction": "lowers"
+    }
+  ],
+  "survival_curve": [
+    {
+      "day": 1,
+      "still_in_shelter": null
+    },
+    {
+      "day": 7,
+      "still_in_shelter": null
+    },
+    {
+      "day": 14,
+      "still_in_shelter": null
+    },
+    {
+      "day": 30,
+      "still_in_shelter": null
+    },
+    {
+      "day": 60,
+      "still_in_shelter": null
+    },
+    {
+      "day": 90,
+      "still_in_shelter": null
+    },
+    {
+      "day": 180,
+      "still_in_shelter": null
+    }
+  ],
+  "suggested_channel": "senior adoption event",
+  "timeline": [
+    {
+      "event": "intake",
+      "at": "2021-10-02T13:48:00",
+      "detail": "Stray, Sick condition"
+    }
+  ],
+  "similar_animals": [
+    {
+      "animal_id": "A520786",
+      "name": "Meow",
+      "breed": "Domestic Shorthair Mix",
+      "days_to_outcome": 3.0,
+      "outcome": "Adoption",
+      "similarity": 1.0
+    },
+    {
+      "animal_id": "A591959",
+      "name": "Klaus",
+      "breed": "Domestic Shorthair Mix",
+      "days_to_outcome": 8.0,
+      "outcome": "Adoption",
+      "similarity": 1.0
+    },
+    {
+      "animal_id": "A618681",
+      "name": "Jasmine",
+      "breed": "Domestic Shorthair Mix",
+      "days_to_outcome": 1.9,
+      "outcome": "Return to Owner",
+      "similarity": 1.0
+    }
+  ],
+  "actual_outcome": {
+    "note": "This animal's real outcome, shown in the demo only so a reviewer can check the prediction against what happened. A live deployment would not have it at scoring time.",
+    "outcome_type": "Adoption",
+    "days_to_outcome": 10.1
+  }
+}
