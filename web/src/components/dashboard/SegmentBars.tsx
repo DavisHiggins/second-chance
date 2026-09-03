@@ -1,109 +1,102 @@
 "use client";
 
-import { useReducedMotion } from "framer-motion";
-import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import ChartFrame from "@/components/charts/ChartFrame";
 import { DASHBOARD } from "@/lib/content";
-import { formatCount, formatLabel, formatNumber } from "@/lib/format";
-import type { Segment } from "@/types/api";
+import { formatPercent, NOT_MEASURED } from "@/lib/format";
+import type { SegmentRow } from "@/lib/austin/metrics";
 
-/** Ordinal ramp: on light it starts no lighter than step 250. */
-const ORDINAL_RAMP = [
-  "var(--ramp-250)",
-  "var(--ramp-300)",
-  "var(--ramp-400)",
-  "var(--ramp-500)",
-  "var(--ramp-600)",
-  "var(--ramp-700)",
-];
+const LABELS: Record<string, string> = {
+  juvenile: "Under a year",
+  adult: "Adult",
+  senior: "Senior",
+  unknown: "Age not recorded",
+};
 
-export function SegmentBars({ segments }: { segments: Segment[] }) {
-  const reducedMotion = useReducedMotion();
-  const ordered = segments.slice().sort((a, b) => b.median_expected_days - a.median_expected_days);
-  const rows = ordered.map((segment, index) => ({
-    level: formatLabel(segment.level),
-    days: segment.median_expected_days,
-    n: segment.n,
-    // Darkest step goes to the longest wait: the ramp carries the ordering.
-    color: ORDINAL_RAMP[ORDINAL_RAMP.length - 1 - Math.min(index, ORDINAL_RAMP.length - 1)],
-  }));
+/**
+ * Observed median days to adoption by life stage.
+ *
+ * This is a measurement, not a model output. It stays truthful and useful even
+ * when no model is scoring, which is why the dashboard leans on it rather than
+ * on a predicted-wait chart.
+ *
+ * The "age not recorded" row is kept rather than dropped. Those animals have no
+ * date of birth in the feed, the model declines to score them for exactly that
+ * reason, and hiding the row would hide how many of them there are.
+ */
+export function SegmentBars({ segments }: { segments: SegmentRow[] }) {
+  const rows = segments.filter((row) => row.n >= 20);
 
-  const summary = `${DASHBOARD.segmentsSubtitle}. ${rows
-    .map((row) => `${row.level}: ${formatNumber(row.days, 1)} days`)
-    .join(". ")}.`;
+  if (rows.length === 0) {
+    return (
+      <p className="t-small" style={{ color: "var(--ink-muted)" }}>
+        Not enough completed stays to break down by life stage yet.
+      </p>
+    );
+  }
+
+  const max = Math.max(...rows.map((row) => row.medianDaysToAdoption ?? 0), 1);
+
+  const summary = rows
+    .map(
+      (row) =>
+        `${LABELS[row.level] ?? row.level}: ${
+          row.medianDaysToAdoption === null
+            ? "not measured"
+            : `${row.medianDaysToAdoption.toFixed(0)} days`
+        }`,
+    )
+    .join(", ");
 
   return (
     <ChartFrame
       title={DASHBOARD.segmentsTitle}
       subtitle={DASHBOARD.segmentsSubtitle}
       summary={summary}
-      height={260}
+      height={190}
       table={{
-        caption: "Median predicted days to adoption by life stage, held-out test block.",
-        columns: ["Life stage", "Median days", "Animals"],
-        rows: rows.map((row) => [row.level, formatNumber(row.days, 1), formatCount(row.n)]),
+        caption: "Observed median days to adoption by life stage",
+        columns: ["Life stage", "Completed stays", "Median days", "Share adopted"],
+        rows: rows.map((row) => [
+          LABELS[row.level] ?? row.level,
+          row.n,
+          row.medianDaysToAdoption === null ? NOT_MEASURED : row.medianDaysToAdoption.toFixed(1),
+          row.adoptionShare === null ? NOT_MEASURED : formatPercent(row.adoptionShare),
+        ]),
       }}
     >
-      <ResponsiveContainer width="100%" height={260}>
-        <BarChart
-          data={rows}
-          layout="vertical"
-          margin={{ top: 4, right: 56, bottom: 4, left: 8 }}
-          barCategoryGap={8}
-        >
-          <XAxis type="number" hide domain={[0, Math.max(...rows.map((r) => r.days)) * 1.2]} />
-          <YAxis
-            type="category"
-            dataKey="level"
-            width={104}
-            tick={{ fill: "var(--ink-secondary)", fontSize: 13 }}
-            axisLine={{ stroke: "var(--axis-line)" }}
-            tickLine={false}
-          />
-          <Tooltip
-            cursor={{ fill: "var(--surface-sunken)" }}
-            isAnimationActive={false}
-            content={({ active, payload }) => {
-              if (!active || !payload || payload.length === 0) return null;
-              const row = payload[0]?.payload as (typeof rows)[number] | undefined;
-              if (!row) return null;
-              return (
+      <ul className="flex h-full flex-col justify-center gap-4">
+        {rows.map((row) => {
+          const days = row.medianDaysToAdoption;
+          return (
+            <li key={row.level}>
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="t-small" style={{ color: "var(--ink-primary)" }}>
+                  {LABELS[row.level] ?? row.level}
+                </span>
+                <span className="t-small tabular" style={{ color: "var(--ink-secondary)" }}>
+                  {days === null ? NOT_MEASURED : `${days.toFixed(0)} days`}
+                  <span className="t-caption ml-2" style={{ color: "var(--ink-muted)" }}>
+                    {`n = ${row.n.toLocaleString("en-US")}`}
+                  </span>
+                </span>
+              </div>
+              <div
+                className="mt-1.5 h-2 w-full overflow-hidden"
+                style={{ background: "var(--surface-sunken)", borderRadius: "var(--radius-full)" }}
+              >
                 <div
-                  className="t-small rounded-[var(--radius-md)] border px-3 py-2"
                   style={{
-                    background: "var(--surface-raised)",
-                    borderColor: "var(--border-hairline)",
-                    boxShadow: "var(--elev-2)",
-                    color: "var(--ink-primary)",
+                    width: days === null ? "0%" : `${(days / max) * 100}%`,
+                    height: "100%",
+                    background: "var(--series-1)",
+                    borderRadius: "var(--radius-full)",
                   }}
-                >
-                  <p>{row.level}</p>
-                  <p className="tabular">{`${formatNumber(row.days, 1)} median days`}</p>
-                  <p className="t-caption tabular" style={{ color: "var(--ink-secondary)" }}>
-                    {`${formatCount(row.n)} animals`}
-                  </p>
-                </div>
-              );
-            }}
-          />
-          <Bar
-            dataKey="days"
-            radius={[0, 4, 4, 0]}
-            isAnimationActive={!reducedMotion}
-            animationDuration={240}
-          >
-            {rows.map((row) => (
-              <Cell key={row.level} fill={row.color} />
-            ))}
-            <LabelList
-              dataKey="days"
-              position="right"
-              formatter={(value: unknown) => `${formatNumber(Number(value), 1)} days`}
-              style={{ fill: "var(--ink-secondary)", fontSize: 11.5 }}
-            />
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </ChartFrame>
   );
 }

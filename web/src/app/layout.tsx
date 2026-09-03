@@ -1,14 +1,33 @@
 import type { Metadata, Viewport } from "next";
+import { IBM_Plex_Mono, Manrope } from "next/font/google";
 import "./globals.css";
-import { getHealth } from "@/lib/dataSource";
+import { getShelterView } from "@/lib/shelter.server";
 import { SHELL } from "@/lib/content";
 import Header from "@/components/shell/Header";
 import Footer from "@/components/shell/Footer";
 import Providers from "@/components/shell/Providers";
 import { PREFERENCES_BOOTSTRAP } from "@/components/shell/Preferences";
+import { buildQualityRows } from "@/lib/qualityRows";
 
 const DESCRIPTION =
-  "Forecasts how long each animal at the Austin Animal Center will wait for adoption, so staff attention goes where it changes an outcome.";
+  "Reads the City of Austin's public shelter records and estimates which animals may wait longest, so staff attention goes where it changes an outcome.";
+
+/* Manrope for text, IBM Plex Mono for model versions, dataset IDs and
+   timestamps. Both are loaded through next/font, which inlines the font-face
+   declarations and reserves metrics up front, so switching from the system
+   stack costs no layout shift. `swap` keeps text readable while they load. */
+const manrope = Manrope({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-sans-loaded",
+});
+
+const plexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  display: "swap",
+  variable: "--font-mono-loaded",
+});
 
 export const metadata: Metadata = {
   title: { default: "SecondChance", template: "%s · SecondChance" },
@@ -36,15 +55,22 @@ export const viewport: Viewport = {
   ],
 };
 
+/* Austin publishes hourly, so the shell revalidates hourly too. Without this
+   Next would statically prerender the layout at build time and the header
+   would report the freshness of the deployment rather than of the data — which
+   is the exact class of bug this rebuild exists to remove. */
+export const revalidate = 3600;
+
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  // The model version and the data freshness are read once here and rendered in
-  // the header on every route, never behind a click.
-  const health = await getHealth();
+  // The data status is read once here and rendered in the header on every
+  // route, never behind a click. `cache` makes this free for the pages that
+  // ask for the same view again.
+  const view = await getShelterView();
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={`${manrope.variable} ${plexMono.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: PREFERENCES_BOOTSTRAP }} />
       </head>
@@ -58,11 +84,12 @@ export default async function RootLayout({
             {SHELL.skipLink}
           </a>
           <Header
-            modelVersion={health.model_version}
-            dataAsOf={health.data_as_of}
-            usingFallback={health.using_fallback_data}
+            status={view.status}
+            definitions={view.definitions}
+            quality={buildQualityRows(view)}
+            unscored={view.unscored}
           />
-          <main id="main" className="mx-auto w-full max-w-[1440px] px-6 py-8 lg:px-10">
+          <main id="main" className="mx-auto w-full max-w-[1440px] px-5 py-8 sm:px-6 lg:px-10">
             {children}
           </main>
           <Footer />

@@ -1,185 +1,190 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Check, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import Link from "next/link";
 import { QUEUE } from "@/lib/content";
-import { checkPop, expandTransition } from "@/lib/motion";
 import { formatCount, formatLabel } from "@/lib/format";
-import { driverPhrase } from "@/lib/driverLabels";
+import { expandContent, expandTransition } from "@/lib/motion";
+import { BAND_LABEL } from "@/lib/model/presentation";
 import MonogramTile from "@/components/ui/MonogramTile";
-import ProbabilityMeter from "@/components/queue/ProbabilityMeter";
-import RiskBar, { BAND_LABEL } from "@/components/queue/RiskBar";
-import ExpandedCard from "@/components/queue/ExpandedCard";
-import type { InterventionChannel, QueueAnimal } from "@/types/api";
+import RiskMeter from "@/components/queue/RiskMeter";
+import StayExplanation from "@/components/queue/StayExplanation";
+import type { InterventionChannel, ScoredStay } from "@/lib/shelter.server";
 
-function IconAction({
-  label,
-  onClick,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      title={label}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] border"
-      style={{
-        borderColor: "var(--border-hairline)",
-        background: "var(--surface-card)",
-        color: "var(--ink-secondary)",
-      }}
-    >
-      {children}
-    </button>
-  );
-}
+const CELL: React.CSSProperties = {
+  borderBottom: "1px solid var(--border-hairline)",
+  height: "var(--row-height)",
+};
 
+/**
+ * One open stay, as a table row.
+ *
+ * The expansion is a second row spanning the table rather than a nested
+ * layout, so the columns above it stay aligned while it is open and the
+ * reading order a screen reader follows is still row, then detail for that
+ * row.
+ *
+ * The risk column is the only place a probability appears in the table, and it
+ * renders nothing at all when scoring is off: the fallback shows how long the
+ * animal has been waiting, which is a fact, rather than a greyed-out number
+ * that looks like a prediction the page is withholding.
+ */
 export function QueueRow({
-  animal,
-  channel,
+  stay,
+  scoring,
+  channels,
   expanded,
-  actioned,
   onToggle,
-  onAction,
 }: {
-  animal: QueueAnimal;
-  channel: InterventionChannel | undefined;
+  stay: ScoredStay;
+  scoring: boolean;
+  channels: readonly InterventionChannel[];
   expanded: boolean;
-  actioned: boolean;
   onToggle: () => void;
-  onAction: () => void;
 }) {
   const reducedMotion = useReducedMotion();
-  const [hovered, setHovered] = useState(false);
-  const topDriver = animal.drivers[0];
-  const displayName = animal.name ?? QUEUE.unnamed;
+  const displayName = stay.name ?? QUEUE.unnamed;
+  const detailId = `queue-detail-${stay.episodeId.replace(/[^A-Za-z0-9_-]/g, "-")}`;
+
+  const details = [
+    stay.species,
+    stay.breed,
+    stay.lifeStage === "unknown" ? null : formatLabel(stay.lifeStage),
+    stay.sex ? formatLabel(stay.sex) : null,
+  ].filter(Boolean) as string[];
 
   return (
-    <motion.li
-      layout={reducedMotion ? false : "position"}
-      transition={expandTransition}
-      className="overflow-hidden border"
-      style={{
-        background: hovered ? "var(--surface-sunken)" : "var(--surface-card)",
-        borderColor: "var(--border-hairline)",
-        borderRadius: "var(--radius-lg)",
-        opacity: actioned ? 0.4 : 1,
-        transition: "background var(--dur-instant) var(--ease-out), opacity var(--dur-base)",
-      }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      {/* Below 640px the row becomes a card: identity first, then the numbers,
-          then the driver. */}
-      <div className="flex items-stretch gap-3 p-3" style={{ minHeight: "var(--row-height)" }}>
-        <RiskBar band={animal.risk_band} hovered={hovered} />
-
-        <div className="flex flex-1 flex-wrap items-center gap-x-4 gap-y-3 sm:flex-nowrap">
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            <MonogramTile name={animal.name} />
+    <>
+      <tr style={{ background: expanded ? "var(--surface-sunken)" : "transparent" }}>
+        <td className="px-4" style={CELL}>
+          <div className="flex items-center gap-3">
+            <MonogramTile name={stay.name} species={stay.species} size={40} />
             <div className="min-w-0">
-              <p className="t-subtitle truncate" style={{ color: "var(--ink-primary)" }}>
-                {animal.name ? (
-                  displayName
-                ) : (
+              <p className="t-small truncate font-medium" style={{ color: "var(--ink-primary)" }}>
+                {stay.name ?? (
                   <span className="italic" style={{ color: "var(--ink-muted)" }}>
                     {QUEUE.unnamed}
                   </span>
                 )}
-                <span className="t-caption ml-2 font-mono" style={{ color: "var(--ink-muted)" }}>
-                  {animal.animal_id}
-                </span>
               </p>
-              <p className="t-small truncate" style={{ color: "var(--ink-secondary)" }}>
-                {`${animal.breed} · ${formatLabel(animal.age_band)} · ${animal.sex_upon_intake}`}
-              </p>
-              <p className="t-caption" style={{ color: "var(--ink-muted)" }}>
-                {`Risk band: ${BAND_LABEL[animal.risk_band]}`}
+              <p className="t-caption font-mono" style={{ color: "var(--ink-muted)" }}>
+                {stay.animalId}
               </p>
             </div>
           </div>
+        </td>
 
-          <div className="shrink-0 text-right">
-            <p className="t-title tabular" style={{ color: "var(--ink-primary)" }}>
-              {formatCount(animal.days_in_care)}
+        <td className="px-4" style={CELL}>
+          <p className="t-small" style={{ color: "var(--ink-secondary)" }}>
+            {details.join(" · ")}
+          </p>
+          {stay.possiblyStale ? (
+            <p className="t-caption mt-0.5" style={{ color: "var(--status-warning)" }}>
+              {QUEUE.staleBadge}
             </p>
-            <p className="t-caption" style={{ color: "var(--ink-muted)" }}>
-              {QUEUE.daysLabel}
-            </p>
-          </div>
-
-          <div className="shrink-0">
-            <ProbabilityMeter value={animal.p_adopt_30d} interval={animal.interval?.p_adopt_30d} />
-            <p className="t-caption mt-1" style={{ color: "var(--ink-muted)" }}>
-              {QUEUE.probabilityLabel}
-            </p>
-          </div>
-
-          {topDriver ? (
-            <span
-              className="t-caption shrink-0 rounded-[var(--radius-full)] px-2.5 py-1"
-              style={{ background: "var(--surface-sunken)", color: "var(--ink-secondary)" }}
-            >
-              {`${driverPhrase(topDriver)} · ${topDriver.direction} chance`}
-            </span>
           ) : null}
-        </div>
+        </td>
 
-        <div className="flex shrink-0 items-center gap-2">
-          <IconAction label={expanded ? QUEUE.collapse : QUEUE.expand} onClick={onToggle}>
-            {expanded ? (
-              <ChevronUp size={20} strokeWidth={1.5} />
+        <td className="px-4 text-right" style={CELL}>
+          <span className="t-subtitle tabular" style={{ color: "var(--ink-primary)" }}>
+            {formatCount(stay.daysInCare)}
+          </span>
+          <span className="t-caption ml-1" style={{ color: "var(--ink-muted)" }}>
+            {QUEUE.daysLabel}
+          </span>
+        </td>
+
+        <td className="px-4" style={CELL}>
+          <div className="flex justify-end">
+            {scoring && stay.pLongStay60d !== null && stay.riskBand ? (
+              <RiskMeter
+                value={stay.pLongStay60d}
+                band={stay.riskBand}
+                label={BAND_LABEL[stay.riskBand]}
+              />
             ) : (
-              <ChevronDown size={20} strokeWidth={1.5} />
+              <span
+                className="t-caption text-right"
+                style={{ color: "var(--ink-muted)" }}
+                title={stay.predictionUnavailableReason ?? undefined}
+              >
+                {scoring ? QUEUE.predictionUnavailable : `Waiting ${formatCount(stay.daysInCare)} days`}
+              </span>
             )}
-          </IconAction>
-          <IconAction label={`${QUEUE.markActioned}: ${displayName}`} onClick={onAction}>
-            {actioned ? (
-              <motion.span variants={checkPop} initial="hidden" animate="show">
-                <Check size={20} strokeWidth={1.5} color="var(--status-good)" />
-              </motion.span>
-            ) : (
-              <Check size={20} strokeWidth={1.5} />
-            )}
-          </IconAction>
-          <Link
-            href={`/animals/${animal.animal_id}`}
-            aria-label={`${QUEUE.detailLink}: ${displayName}`}
-            title={QUEUE.detailLink}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] border"
-            style={{
-              borderColor: "var(--border-hairline)",
-              background: "var(--surface-card)",
-              color: "var(--ink-secondary)",
-            }}
-          >
-            <ExternalLink size={20} strokeWidth={1.5} />
-          </Link>
-        </div>
-      </div>
+          </div>
+        </td>
+
+        <td className="px-4" style={CELL}>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={onToggle}
+              aria-expanded={expanded}
+              aria-controls={detailId}
+              aria-label={`${expanded ? QUEUE.collapse : QUEUE.expand}: ${displayName}`}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] border"
+              style={{
+                borderColor: "var(--border-hairline)",
+                background: "var(--surface-card)",
+                color: "var(--ink-secondary)",
+              }}
+            >
+              {expanded ? (
+                <ChevronUp size={18} strokeWidth={1.5} aria-hidden="true" />
+              ) : (
+                <ChevronDown size={18} strokeWidth={1.5} aria-hidden="true" />
+              )}
+            </button>
+            <Link
+              href={`/discover/${encodeURIComponent(stay.episodeId)}`}
+              aria-label={`${QUEUE.detailLink}: ${displayName}`}
+              title={QUEUE.detailLink}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] border"
+              style={{
+                borderColor: "var(--border-hairline)",
+                background: "var(--surface-card)",
+                color: "var(--ink-secondary)",
+              }}
+            >
+              <ExternalLink size={18} strokeWidth={1.5} aria-hidden="true" />
+            </Link>
+          </div>
+        </td>
+      </tr>
 
       <AnimatePresence initial={false}>
         {expanded ? (
-          <motion.div
-            key="expansion"
-            initial={reducedMotion ? false : { height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={reducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
-            transition={expandTransition}
-            style={{ overflow: "hidden" }}
-          >
-            <ExpandedCard animal={animal} channel={channel} />
-          </motion.div>
+          <tr id={detailId}>
+            <td
+              colSpan={5}
+              className="px-4"
+              style={{
+                borderBottom: "1px solid var(--border-hairline)",
+                background: "var(--surface-sunken)",
+              }}
+            >
+              <motion.div
+                initial={reducedMotion ? false : { height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={reducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+                transition={expandTransition}
+                style={{ overflow: "hidden" }}
+              >
+                <motion.div
+                  variants={expandContent}
+                  initial={reducedMotion ? false : "hidden"}
+                  animate="show"
+                  className="py-5"
+                >
+                  <StayExplanation stay={stay} scoring={scoring} channels={channels} />
+                </motion.div>
+              </motion.div>
+            </td>
+          </tr>
         ) : null}
       </AnimatePresence>
-    </motion.li>
+    </>
   );
 }
 

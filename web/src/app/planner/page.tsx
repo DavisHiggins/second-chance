@@ -1,19 +1,41 @@
-import { getInterventions, getModelSummary, getQueue } from "@/lib/dataSource";
+import type { Metadata } from "next";
+import {
+  getInterventionChannels,
+  getShelterView,
+  hasLiveScoring,
+  queueOrder,
+} from "@/lib/shelter.server";
+import { loadScoringModel } from "@/lib/model/registry.server";
 import { PLANNER } from "@/lib/content";
 import PageMotion, { MotionChild } from "@/components/shell/PageMotion";
 import UsePolicyBanner from "@/components/shell/UsePolicyBanner";
 import PlannerClient from "@/components/planner/PlannerClient";
+import { DataUnavailable } from "@/components/shell/StateNotices";
+
+export const revalidate = 3600;
+
+export const metadata: Metadata = {
+  title: "Outreach plan",
+  description:
+    "Turn the current queue into a week of outreach work, with the staff time it costs and the evidence behind each channel.",
+};
+
+/** The queue depth the measured lift figure is reported at in the artifact. */
+const LIFT_K = 50;
 
 export default async function PlannerPage() {
-  const [queue, interventions, summary] = await Promise.all([
-    getQueue(),
-    getInterventions(),
-    getModelSummary(),
-  ]);
+  const [view, model] = await Promise.all([getShelterView(), loadScoringModel()]);
 
-  // The measured lift is read from the results file, never hardcoded.
-  const headlineLift = summary.headline.long_stay_lift_at_50;
-  const liftAtK = typeof headlineLift === "number" ? headlineLift : null;
+  if (!view.status.retrievedAt) {
+    return <DataUnavailable problem={view.status.problem} />;
+  }
+
+  const scoring = hasLiveScoring(view);
+  const ordered = queueOrder(view.stays, view.scoringStatus);
+
+  // Read from the artifact, never typed in. When no validated model is loaded
+  // there is no measured lift to report and the planner says so.
+  const liftAtK = model.artifact?.targets.long_stay_60d.test.liftAt50 ?? null;
 
   return (
     <PageMotion className="space-y-6">
@@ -32,10 +54,11 @@ export default async function PlannerPage() {
 
       <MotionChild index={2}>
         <PlannerClient
-          animals={queue.animals}
-          channels={interventions.channels}
+          stays={ordered}
+          channels={getInterventionChannels()}
+          scoring={scoring}
           liftAtK={liftAtK}
-          k={50}
+          k={LIFT_K}
         />
       </MotionChild>
     </PageMotion>

@@ -1,20 +1,32 @@
+import { Cat, Dog } from "lucide-react";
+
 /**
- * `photo_url` is null for most animals in this dataset, so the monogram is the
- * normal case and not the error case. It never uses a stock photo of a
- * different animal, and it occupies exactly the space a photo would. The
- * tint is the brand teal at its softest, so a wall of monograms reads as one
- * family rather than as a wall of missing images.
+ * The stand-in where a photograph would go.
+ *
+ * Austin's public feeds carry no photographs at all, so this is the normal
+ * case rather than the error case. It deliberately never falls back to a stock
+ * image of a different animal: attaching an unrelated photo to a real record
+ * would be the most convincing lie on the page.
+ *
+ * A named animal gets its initial; an unnamed one gets its species mark, which
+ * is more useful than a question mark and is true of every record. The tint is
+ * the brand teal at its softest, so a grid of these reads as one family rather
+ * than as a wall of missing images.
  */
 export function MonogramTile({
   name,
+  species,
   size = 56,
   radius = "md",
 }: {
   name: string | null;
+  species?: string;
   size?: number;
   radius?: "md" | "lg" | "xl";
 }) {
-  const initial = (name ?? "?").trim().charAt(0).toUpperCase() || "?";
+  const initial = (name ?? "").trim().charAt(0).toUpperCase();
+  const Icon = species === "Cat" ? Cat : Dog;
+
   return (
     <div
       aria-hidden="true"
@@ -30,7 +42,7 @@ export function MonogramTile({
         fontWeight: 600,
       }}
     >
-      {initial}
+      {initial ? initial : <Icon size={Math.round(size * 0.44)} strokeWidth={1.5} />}
     </div>
   );
 }

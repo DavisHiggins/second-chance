@@ -1,13 +1,26 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowDownRight, ArrowRight, ArrowUpRight } from "lucide-react";
 import { DUR, EASE_OUT } from "@/lib/motion";
-import { formatSignedPercent, NOT_MEASURED } from "@/lib/format";
-import type { DashboardTile } from "@/lib/dataSource";
+import { NOT_MEASURED } from "@/lib/format";
+import CountUp from "@/components/dashboard/CountUp";
 
 const WIDTH = 96;
 const HEIGHT = 40;
+
+export interface StatTileData {
+  id: string;
+  label: string;
+  /** Already formatted. Null renders as "not measured", never as a zero. */
+  display: string | null;
+  unit: string;
+  /** The number to count up to, when the tile is a plain count. */
+  countTo?: number;
+  spark: number[];
+  /** How many rows the figure was computed from. Shown, not hidden. */
+  sampleSize: number | null;
+  footnote: string;
+}
 
 function sparklinePath(values: number[]): string {
   if (values.length < 2) return "";
@@ -24,36 +37,23 @@ function sparklinePath(values: number[]): string {
 }
 
 /**
- * Delta colour follows the sign of the number as it is printed: a value that
- * reads negative is red, a value that reads positive is green. A change too
- * small to survive rounding is neutral, and so is one that was not measured.
+ * A single headline figure.
+ *
+ * There is no percentage-change indicator any more. The old tiles compared the
+ * current month against the previous one and rendered a green or red arrow,
+ * which read as a judgement the data cannot support: a month with fewer
+ * adoptions may mean fewer intakes, and the arrow could not tell the
+ * difference. What replaced it is the sample size and a one-line note about
+ * what the figure counts, which is the thing a user actually needs to read it.
  */
-function deltaTone(value: number | null): "good" | "critical" | "neutral" {
-  if (value === null || Math.abs(value) < 0.0005) return "neutral";
-  return value > 0 ? "good" : "critical";
-}
-
-export function StatTile({ tile }: { tile: DashboardTile }) {
+export function StatTile({ tile }: { tile: StatTileData }) {
   const reducedMotion = useReducedMotion();
-  const tone = deltaTone(tile.delta.value);
-  const color =
-    tone === "good"
-      ? "var(--status-good)"
-      : tone === "critical"
-        ? "var(--status-critical)"
-        : "var(--ink-muted)";
-  const Arrow =
-    tile.delta.value === null || tone === "neutral"
-      ? ArrowRight
-      : tile.delta.value > 0
-        ? ArrowUpRight
-        : ArrowDownRight;
-
   const path = sparklinePath(tile.spark);
+  const measured = tile.display !== null;
 
   return (
     <div
-      className="flex h-full flex-col justify-between border transition-shadow"
+      className="flex h-full flex-col justify-between border"
       style={{
         background: "var(--surface-card)",
         borderColor: "var(--border-hairline)",
@@ -66,55 +66,61 @@ export function StatTile({ tile }: { tile: DashboardTile }) {
         <p className="t-overline" style={{ color: "var(--ink-muted)" }}>
           {tile.label}
         </p>
-        <p className="t-display tabular mt-2" style={{ color: "var(--ink-primary)" }}>
-          {tile.display}
-          <span className="t-small ml-2 font-normal" style={{ color: "var(--ink-muted)" }}>
-            {tile.unit}
-          </span>
+        <p
+          className="t-display tabular mt-2"
+          style={{ color: measured ? "var(--ink-primary)" : "var(--ink-muted)" }}
+        >
+          {measured ? (
+            tile.countTo !== undefined ? (
+              <CountUp value={tile.countTo} id={`tile-${tile.id}`} />
+            ) : (
+              tile.display
+            )
+          ) : (
+            NOT_MEASURED
+          )}
+          {measured ? (
+            <span className="t-small ml-2 font-normal" style={{ color: "var(--ink-muted)" }}>
+              {tile.unit}
+            </span>
+          ) : null}
         </p>
       </div>
 
       <div className="mt-4 flex items-end justify-between gap-3">
-        <svg
-          width={WIDTH}
-          height={HEIGHT}
-          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-          aria-hidden="true"
-          className="overflow-visible"
-        >
-          <motion.path
-            d={path}
-            fill="none"
-            stroke="var(--series-1)"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            initial={reducedMotion ? false : { pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ duration: DUR.slow, ease: EASE_OUT, delay: 0.12 }}
-          />
-        </svg>
+        {path ? (
+          <svg
+            width={WIDTH}
+            height={HEIGHT}
+            viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+            aria-hidden="true"
+            className="overflow-visible"
+          >
+            <motion.path
+              d={path}
+              fill="none"
+              stroke="var(--series-1)"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              initial={reducedMotion ? false : { pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ duration: DUR.slow, ease: EASE_OUT, delay: 0.12 }}
+            />
+          </svg>
+        ) : (
+          <span />
+        )}
 
-        <motion.span
-          className="t-caption tabular flex flex-col items-end text-right"
-          style={{ color }}
-          initial={reducedMotion ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: DUR.fast, delay: DUR.slow + 0.12 }}
-        >
-          <span className="inline-flex items-center gap-1">
-            <Arrow size={14} strokeWidth={1.5} aria-hidden="true" />
-            {tile.delta.value === null ? NOT_MEASURED : formatSignedPercent(tile.delta.value)}
+        {tile.sampleSize !== null ? (
+          <span className="t-caption tabular text-right" style={{ color: "var(--ink-muted)" }}>
+            {`n = ${tile.sampleSize.toLocaleString("en-US")}`}
           </span>
-          <span style={{ color: "var(--ink-muted)" }}>{tile.delta.caption}</span>
-        </motion.span>
+        ) : null}
       </div>
-      <p className="sr-only">
-        {`Twelve month trend for ${tile.label}. ${
-          tile.delta.value === null
-            ? "Change not measured."
-            : `Change ${formatSignedPercent(tile.delta.value)} ${tile.delta.caption}.`
-        }`}
+
+      <p className="t-caption mt-3" style={{ color: "var(--ink-muted)" }}>
+        {tile.footnote}
       </p>
     </div>
   );

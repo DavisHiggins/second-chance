@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { FOOTER, SHELL, USE_POLICY_FULL } from "@/lib/content";
+import { ALL_DATASETS } from "@/lib/austin/datasets";
 
 /**
  * The footer is the brand anchor: the navy band from the logo, carrying the
@@ -49,21 +50,34 @@ export function Footer() {
 
           <div>
             <h2 className="t-overline">{FOOTER.sourcesHeading}</h2>
+            {/* All four datasets, each labelled by role. The previous footer
+                listed only the two archives, which stop in May 2025, plus a
+                weather feed and an adoptable-listings service the product does
+                not use. */}
             <ul className="mt-3 space-y-2">
-              {FOOTER.sources.map((source) => (
-                <li key={source.label}>
+              {ALL_DATASETS.map((dataset) => (
+                <li key={dataset.id}>
                   <a
                     className="t-small underline underline-offset-2"
                     style={{ color: "var(--brand-band-ink)" }}
-                    href={source.href}
+                    href={dataset.href}
                     target="_blank"
                     rel="noreferrer noopener"
                   >
-                    {source.label}
+                    {dataset.label}
                   </a>
+                  <span className="t-caption block" style={{ color: "var(--brand-band-ink-muted)" }}>
+                    <span className="font-mono">{dataset.id}</span>
+                    {dataset.refresh === "hourly"
+                      ? " · current, refreshed hourly"
+                      : " · archive, frozen at the May 2025 cutover"}
+                  </span>
                 </li>
               ))}
             </ul>
+            <p className="t-caption mt-3" style={{ color: "var(--brand-band-ink-muted)" }}>
+              {FOOTER.sourcesNote}
+            </p>
           </div>
 
           <div>

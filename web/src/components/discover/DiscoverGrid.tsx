@@ -1,32 +1,120 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
+import dynamic from "next/dynamic";
+import { useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { DISCOVER } from "@/lib/content";
-import { childVariant, DUR, EASE_OUT, pageContainer } from "@/lib/motion";
-import { formatCount } from "@/lib/format";
-import { currentAge, publicSentence } from "@/lib/publicCopy";
+import { formatAge, formatCount } from "@/lib/format";
 import MonogramTile from "@/components/ui/MonogramTile";
-import type { QueueAnimal } from "@/types/api";
+import type { ScoredStay } from "@/lib/shelter.server";
+import { DUR, EASE_OUT } from "@/lib/motion";
 
-type ChipId = "Dog" | "Cat" | "under-one" | "over-seven";
+const StaggerReveal = dynamic(() => import("@/components/motion/StaggerReveal"), {
+  ssr: false,
+  loading: () => null,
+});
 
-const CHIPS: Array<{ id: ChipId; label: string }> = [
+type SpeciesFilter = "all" | "Dog" | "Cat";
+
+const FILTERS: { id: SpeciesFilter; label: string }[] = [
+  { id: "all", label: "All animals" },
   { id: "Dog", label: "Dogs" },
   { id: "Cat", label: "Cats" },
-  { id: "under-one", label: "Under a year" },
-  { id: "over-seven", label: "Over seven" },
 ];
 
-function Card({ animal, index }: { animal: QueueAnimal; index: number }) {
-  const reducedMotion = useReducedMotion();
+/**
+ * The public grid of current records.
+ *
+ * Cards carry no probability and no risk band. A member of the public reading
+ * about a specific animal does not need a model's estimate of how long it will
+ * wait, and showing one would invite exactly the reading the guardrails
+ * forbid. What they do carry is how long the animal has been there, which is a
+ * measurement and is the thing that makes the case.
+ */
+export function DiscoverGrid({ stays }: { stays: ScoredStay[] }) {
+  const [species, setSpecies] = useState<SpeciesFilter>("all");
+
+  const visible = useMemo(
+    () =>
+      stays
+        .filter((stay) => species === "all" || stay.species === species)
+        .slice()
+        .sort((a, b) => b.daysInCare - a.daysInCare),
+    [stays, species],
+  );
+
   return (
-    <motion.li variants={childVariant(index)}>
-      <motion.div
-        whileHover={reducedMotion ? undefined : { y: -4, boxShadow: "var(--elev-3)" }}
-        transition={{ duration: DUR.base, ease: EASE_OUT }}
-        className="h-full border"
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div role="group" aria-label="Filter by species" className="flex flex-wrap gap-2">
+          {FILTERS.map((filter) => {
+            const active = species === filter.id;
+            return (
+              <button
+                key={filter.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setSpecies(filter.id)}
+                className="t-small relative rounded-[var(--radius-full)] border px-4 py-2"
+                style={{
+                  borderColor: active ? "transparent" : "var(--border-hairline)",
+                  background: active ? "var(--accent)" : "var(--surface-card)",
+                  color: active ? "var(--accent-contrast)" : "var(--ink-secondary)",
+                }}
+              >
+                {filter.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <p className="t-small" aria-live="polite" style={{ color: "var(--ink-muted)" }}>
+          {`${formatCount(visible.length)} shown · ${DISCOVER.sortDefaultLabel.toLowerCase()}`}
+        </p>
+      </div>
+
+      <p className="t-caption mt-3" style={{ color: "var(--ink-muted)" }}>
+        {DISCOVER.photoNote}
+      </p>
+
+      {visible.length === 0 ? (
+        <p className="t-body mt-8" style={{ color: "var(--ink-secondary)" }}>
+          {DISCOVER.empty}
+        </p>
+      ) : (
+        // Keyed on the filter so the stagger replays when the set changes,
+        // which reads as the grid rebuilding rather than as rows twitching.
+        <StaggerReveal
+          key={species}
+          className="mt-6"
+          selector=":scope > ul > li"
+          stagger={0.03}
+          distance={12}
+        >
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {visible.map((stay) => (
+              <li key={stay.episodeId}>
+                <StayCard stay={stay} />
+              </li>
+            ))}
+          </ul>
+        </StaggerReveal>
+      )}
+    </div>
+  );
+}
+
+function StayCard({ stay }: { stay: ScoredStay }) {
+  return (
+    <motion.div
+      whileHover={{ y: -3 }}
+      transition={{ duration: DUR.fast, ease: EASE_OUT }}
+      className="h-full"
+    >
+      <Link
+        href={`/discover/${encodeURIComponent(stay.episodeId)}`}
+        className="flex h-full flex-col border p-5"
         style={{
           background: "var(--surface-card)",
           borderColor: "var(--border-hairline)",
@@ -34,97 +122,55 @@ function Card({ animal, index }: { animal: QueueAnimal; index: number }) {
           boxShadow: "var(--elev-1)",
         }}
       >
-        {/* The whole card is the link target. */}
-        <Link
-          href={`/discover/${animal.animal_id}`}
-          className="flex h-full flex-col gap-3 p-5"
-          style={{ color: "var(--ink-primary)" }}
-        >
-          <MonogramTile name={animal.name} size={72} radius="lg" />
-          <h3 className="t-title">{animal.name ?? "Waiting for a name"}</h3>
-          <p className="t-small flex-1" style={{ color: "var(--ink-secondary)" }}>
-            {publicSentence(animal)}
+        <div className="flex items-start gap-4">
+          <MonogramTile name={stay.name} species={stay.species} size={56} radius="lg" />
+          <div className="min-w-0">
+            <p className="t-subtitle truncate" style={{ color: "var(--ink-primary)" }}>
+              {stay.name ?? DISCOVER.noName}
+            </p>
+            <p className="t-caption font-mono" style={{ color: "var(--ink-muted)" }}>
+              {stay.animalId}
+            </p>
+          </div>
+        </div>
+
+        <dl className="mt-4 space-y-1.5">
+          <Fact label="Species" value={stay.species} />
+          <Fact label="Breed" value={stay.breed} />
+          <Fact
+            label="Age"
+            value={stay.currentAgeDays === null ? null : formatAge(stay.currentAgeDays)}
+          />
+        </dl>
+
+        <div className="mt-auto pt-4">
+          <p className="t-small" style={{ color: "var(--ink-primary)" }}>
+            <span className="tabular font-semibold" style={{ color: "var(--accent-warm-strong)" }}>
+              {stay.daysInCare}
+            </span>{" "}
+            <span style={{ color: "var(--ink-secondary)" }}>days on record</span>
           </p>
-          <span
-            className="t-caption tabular self-start rounded-[var(--radius-full)] px-2.5 py-1"
-            style={{ background: "var(--surface-sunken)", color: "var(--ink-secondary)" }}
-          >
-            {`Waiting ${formatCount(animal.days_in_care)} days`}
-          </span>
-        </Link>
-      </motion.div>
-    </motion.li>
+          {stay.possiblyStale ? (
+            <p className="t-caption mt-1" style={{ color: "var(--ink-muted)" }}>
+              Open over a year — may not have been closed
+            </p>
+          ) : null}
+        </div>
+      </Link>
+    </motion.div>
   );
 }
 
-export function DiscoverGrid({ animals }: { animals: QueueAnimal[] }) {
-  const [active, setActive] = useState<ChipId[]>([]);
-
-  const filtered = useMemo(() => {
-    const species: string[] = active.filter((chip) => chip === "Dog" || chip === "Cat");
-    return animals
-      .filter((animal) => {
-        if (species.length > 0 && !species.includes(animal.animal_type)) return false;
-        if (active.includes("under-one") && currentAge(animal) >= 365) return false;
-        if (active.includes("over-seven") && currentAge(animal) < 365 * 7) return false;
-        return true;
-      })
-      .sort((a, b) => b.days_in_care - a.days_in_care);
-  }, [animals, active]);
-
+function Fact({ label, value }: { label: string; value: string | null }) {
+  if (!value) return null;
   return (
-    <div>
-      <div className="flex flex-wrap items-center gap-2">
-        {CHIPS.map((chip) => {
-          const on = active.includes(chip.id);
-          return (
-            <button
-              key={chip.id}
-              type="button"
-              aria-pressed={on}
-              onClick={() =>
-                setActive((current) =>
-                  current.includes(chip.id)
-                    ? current.filter((value) => value !== chip.id)
-                    : [...current, chip.id],
-                )
-              }
-              className="t-small rounded-[var(--radius-full)] border px-3 py-1.5"
-              style={{
-                borderColor: on ? "var(--accent)" : "var(--border-hairline)",
-                background: on ? "var(--surface-sunken)" : "var(--surface-card)",
-                color: on ? "var(--ink-primary)" : "var(--ink-secondary)",
-              }}
-            >
-              {chip.label}
-            </button>
-          );
-        })}
-        <span className="t-caption ml-auto" style={{ color: "var(--ink-muted)" }}>
-          {DISCOVER.sortDefaultLabel}
-        </span>
-      </div>
-
-      <p aria-live="polite" className="t-small mt-4" style={{ color: "var(--ink-secondary)" }}>
-        {`Showing ${formatCount(filtered.length)} of ${formatCount(animals.length)} animals`}
-      </p>
-
-      {filtered.length === 0 ? (
-        <p className="t-body mt-8" style={{ color: "var(--ink-secondary)" }}>
-          {DISCOVER.empty}
-        </p>
-      ) : (
-        <motion.ul
-          variants={pageContainer}
-          initial="hidden"
-          animate="show"
-          className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
-        >
-          {filtered.map((animal, index) => (
-            <Card key={animal.animal_id} animal={animal} index={index} />
-          ))}
-        </motion.ul>
-      )}
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className="t-caption" style={{ color: "var(--ink-muted)" }}>
+        {label}
+      </dt>
+      <dd className="t-small truncate text-right" style={{ color: "var(--ink-secondary)" }}>
+        {value}
+      </dd>
     </div>
   );
 }

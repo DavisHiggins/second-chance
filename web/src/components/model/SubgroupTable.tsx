@@ -4,14 +4,14 @@ import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { formatCount, formatLabel, formatMetric, formatPercent, formatSigned, NOT_MEASURED } from "@/lib/format";
 import { StatusIcon } from "@/components/ui/Status";
-import type { SubgroupRow } from "@/types/api";
+import type { SubgroupMetric } from "@/lib/model/artifact";
 
-type SortKey = "attribute" | "level" | "n" | "roc_auc" | "calibration_gap";
+type SortKey = "attribute" | "level" | "n" | "rocAuc" | "calibrationGap";
 
 /** A gap this wide is worth flagging on screen rather than leaving to be found. */
 const GAP_FLAG = 0.04;
 
-export function SubgroupTable({ rows, sample }: { rows: SubgroupRow[]; sample: string }) {
+export function SubgroupTable({ rows, sample }: { rows: SubgroupMetric[]; sample: string }) {
   const [sortKey, setSortKey] = useState<SortKey>("attribute");
   const [ascending, setAscending] = useState(true);
 
@@ -36,8 +36,8 @@ export function SubgroupTable({ rows, sample }: { rows: SubgroupRow[]; sample: s
     { key: "attribute", label: "Attribute", numeric: false },
     { key: "level", label: "Level", numeric: false },
     { key: "n", label: "Animals", numeric: true },
-    { key: "roc_auc", label: "AUC", numeric: true },
-    { key: "calibration_gap", label: "Calibration gap", numeric: true },
+    { key: "rocAuc", label: "AUC", numeric: true },
+    { key: "calibrationGap", label: "Calibration gap", numeric: true },
   ];
 
   return (
@@ -97,7 +97,7 @@ export function SubgroupTable({ rows, sample }: { rows: SubgroupRow[]; sample: s
         </thead>
         <tbody>
           {sorted.map((row) => {
-            const gap = row.calibration_gap;
+            const gap = row.calibrationGap;
             const flagged = gap !== null && Math.abs(gap) > GAP_FLAG;
             return (
               <tr key={`${row.attribute}-${row.level}`}>
@@ -127,7 +127,7 @@ export function SubgroupTable({ rows, sample }: { rows: SubgroupRow[]; sample: s
                   className="t-small tabular border-b px-2 text-right"
                   style={{ borderColor: "var(--border-hairline)", color: "var(--ink-secondary)" }}
                 >
-                  {row.roc_auc === null ? NOT_MEASURED : formatMetric(row.roc_auc)}
+                  {row.rocAuc === null ? NOT_MEASURED : formatMetric(row.rocAuc)}
                 </td>
                 <td
                   className="t-small tabular border-b px-2 text-right"

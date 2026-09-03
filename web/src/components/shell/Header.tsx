@@ -6,10 +6,13 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Menu, Moon, Sun, X } from "lucide-react";
-import { NAV, SHELL } from "@/lib/content";
+import { NAV, SHELL, STATUS } from "@/lib/content";
 import { DUR, EASE_OUT } from "@/lib/motion";
 import FreshnessChip from "@/components/shell/FreshnessChip";
+import DataDetails, { type DataQualityRow } from "@/components/shell/DataDetails";
 import { usePreferences } from "@/components/shell/Preferences";
+import type { DataStatus } from "@/lib/austin/status";
+import type { MetricDefinition } from "@/lib/austin/metrics";
 
 /** The lockup is the logo itself, not a redrawing of it: the mark from
  *  `logo.png`, and the wordmark set two-tone the way the file sets it —
@@ -111,22 +114,53 @@ function IconButton({
   );
 }
 
+/** The model chip states plainly whether anything is scoring. When no model is
+ *  live it says so rather than showing a version string that implies one is. */
+function ModelChip({ status }: { status: DataStatus }) {
+  const scoring = status.scoringStatus === "live";
+  const label = scoring
+    ? `${SHELL.modelChipPrefix} ${status.modelVersion}`
+    : status.scoringStatus === "in_progress"
+      ? STATUS.scoringInProgress
+      : STATUS.scoringUnavailable;
+
+  return (
+    <Link
+      href="/model"
+      className="t-caption rounded-[var(--radius-sm)] px-2 py-1 font-mono"
+      style={{
+        background: "var(--surface-sunken)",
+        color: scoring ? "var(--ink-secondary)" : "var(--status-warning)",
+      }}
+      title={status.scoringNote ?? undefined}
+    >
+      {label}
+    </Link>
+  );
+}
+
 export function Header({
-  modelVersion,
-  dataAsOf,
-  usingFallback,
+  status,
+  definitions,
+  quality,
+  unscored,
 }: {
-  modelVersion: string;
-  dataAsOf: string;
-  usingFallback: boolean;
+  status: DataStatus;
+  definitions: MetricDefinition[];
+  quality: DataQualityRow[];
+  unscored: { reason: string; count: number }[];
 }) {
   const { theme, setTheme } = usePreferences();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
     setDrawerOpen(false);
+    setDetailsOpen(false);
   }, [pathname]);
+
+  const openDetails = () => setDetailsOpen(true);
 
   return (
     <header
@@ -154,14 +188,13 @@ export function Header({
         <div className="flex-1" />
 
         <div className="hidden items-center gap-2 lg:flex">
-          <FreshnessChip dataAsOf={dataAsOf} usingFallback={usingFallback} />
-          <Link
-            href="/model"
-            className="t-caption rounded-[var(--radius-sm)] px-2 py-1 font-mono"
-            style={{ background: "var(--surface-sunken)", color: "var(--ink-secondary)" }}
-          >
-            {`${SHELL.modelChipPrefix} ${modelVersion}`}
-          </Link>
+          <FreshnessChip
+            mode={status.mode}
+            updatedAt={status.intakesUpdatedAt ?? status.retrievedAt}
+            problem={status.problem}
+            onOpenDetails={openDetails}
+          />
+          <ModelChip status={status} />
         </div>
 
         <IconButton
@@ -179,17 +212,16 @@ export function Header({
       {/* The stamps stay visible at every width; on small screens they move to
           their own row rather than hiding behind the drawer. */}
       <div
-        className="flex flex-wrap items-center gap-2 border-t px-6 py-2 lg:hidden"
+        className="flex flex-wrap items-center gap-2 border-t px-4 py-2 sm:px-6 lg:hidden"
         style={{ borderColor: "var(--border-hairline)" }}
       >
-        <FreshnessChip dataAsOf={dataAsOf} usingFallback={usingFallback} />
-        <Link
-          href="/model"
-          className="t-caption rounded-[var(--radius-sm)] px-2 py-1 font-mono"
-          style={{ background: "var(--surface-sunken)", color: "var(--ink-secondary)" }}
-        >
-          {`${SHELL.modelChipPrefix} ${modelVersion}`}
-        </Link>
+        <FreshnessChip
+          mode={status.mode}
+          updatedAt={status.intakesUpdatedAt ?? status.retrievedAt}
+          problem={status.problem}
+          onOpenDetails={openDetails}
+        />
+        <ModelChip status={status} />
       </div>
 
       {drawerOpen ? (
@@ -198,11 +230,21 @@ export function Header({
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: DUR.base, ease: EASE_OUT }}
-          className="flex flex-col border-t px-6 py-2"
+          className="flex flex-col border-t px-6 py-2 sm:hidden"
           style={{ background: "var(--surface-card)", borderColor: "var(--border-hairline)" }}
         >
           <NavLinks onNavigate={() => setDrawerOpen(false)} />
         </motion.nav>
+      ) : null}
+
+      {detailsOpen ? (
+        <DataDetails
+          status={status}
+          definitions={definitions}
+          quality={quality}
+          unscored={unscored}
+          onClose={() => setDetailsOpen(false)}
+        />
       ) : null}
     </header>
   );

@@ -1,40 +1,77 @@
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
-import { DASHBOARD } from "@/lib/content";
-import { formatDate } from "@/lib/format";
-import { StatusIcon, statusLabel } from "@/components/ui/Status";
-import type { ModelHealthRow } from "@/types/api";
+import { DASHBOARD, STATUS } from "@/lib/content";
+import { StatusIcon, type StatusTone } from "@/components/ui/Status";
+import { NOT_MEASURED } from "@/lib/format";
 
-export function ModelHealthPanel({ rows }: { rows: ModelHealthRow[] }) {
+export interface ModelHealthRow {
+  id: string;
+  label: string;
+  display: string;
+  tone: StatusTone;
+  note: string;
+}
+
+/**
+ * Model health, read from the published artifact.
+ *
+ * Discrimination and calibration error sit next to each other on purpose. The
+ * archive study documented a model that kept ranking animals correctly for two
+ * years while its probabilities drifted twelve points away from reality, and a
+ * panel showing only AUC would have reported that model as healthy the entire
+ * time.
+ */
+export function ModelHealthPanel({
+  rows,
+  scoringStatus,
+}: {
+  rows: ModelHealthRow[];
+  scoringStatus: "live" | "in_progress" | "unavailable";
+}) {
   return (
     <div>
-      <h2 className="t-title" style={{ color: "var(--ink-primary)" }}>
-        {DASHBOARD.healthTitle}
-      </h2>
-      <p className="t-small mt-1" style={{ color: "var(--ink-secondary)" }}>
-        Measured on the held-out test block. Each row links to the section of the model page it
-        comes from.
-      </p>
-      <ul className="mt-4 divide-y" style={{ borderColor: "var(--border-hairline)" }}>
-        {rows.map((row) => (
-          <li key={row.id}>
-            <Link
-              href={row.href}
-              className="flex items-center gap-3 py-3"
-              style={{ color: "var(--ink-primary)" }}
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="t-title" style={{ color: "var(--ink-primary)" }}>
+          {DASHBOARD.healthTitle}
+        </h2>
+        <Link
+          href="/model"
+          className="t-small underline underline-offset-2"
+          style={{ color: "var(--accent-strong)" }}
+        >
+          Full methodology
+        </Link>
+      </div>
+
+      {scoringStatus !== "live" ? (
+        <p className="t-small mt-3" style={{ color: "var(--ink-secondary)" }}>
+          {STATUS.scoringInProgressBody}
+        </p>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {rows.map((row) => (
+            <li
+              key={row.id}
+              className="flex items-start justify-between gap-4 border-b pb-3 last:border-0 last:pb-0"
+              style={{ borderColor: "var(--border-hairline)" }}
             >
-              <StatusIcon tone={row.status} size={20} label={`${row.label}: ${statusLabel(row.status)}`} />
-              <span className="t-small flex-1" style={{ color: "var(--ink-secondary)" }}>
-                {row.label}
+              <div>
+                <p className="t-small font-medium" style={{ color: "var(--ink-primary)" }}>
+                  {row.label}
+                </p>
+                <p className="t-caption mt-0.5 max-w-[38ch]" style={{ color: "var(--ink-muted)" }}>
+                  {row.note}
+                </p>
+              </div>
+              <span className="inline-flex shrink-0 items-center gap-1.5">
+                <StatusIcon tone={row.tone} size={14} />
+                <span className="t-small tabular font-mono" style={{ color: "var(--ink-primary)" }}>
+                  {row.display || NOT_MEASURED}
+                </span>
               </span>
-              <span className="t-small tabular text-right">
-                {row.id === "retrained" ? formatDate(String(row.value)) : row.display}
-              </span>
-              <ChevronRight size={16} strokeWidth={1.5} aria-hidden="true" style={{ color: "var(--ink-muted)" }} />
-            </Link>
-          </li>
-        ))}
-      </ul>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

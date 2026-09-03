@@ -30,6 +30,15 @@
   --accent-soft: var(--brand-teal-soft);
   --accent-contrast: #ffffff;
 
+  /* The warm accent is rationed on purpose. It marks urgency and the human
+     moments — a long wait, a call to act — and nothing else. Used for a third
+     button or a decorative rule it would stop meaning anything, and the teal
+     would stop being the brand. */
+  --accent-warm: #d9642f;
+  --accent-warm-strong: #b44e1f;
+  --accent-warm-soft: #fdf0e8;
+  --accent-warm-contrast: #ffffff;
+
   /* Surfaces and ink, light. Neutrals are cooled toward the navy so nothing
      on the page fights the mark. */
   --surface-page: #f6f8f8;
@@ -80,9 +89,11 @@
   --status-serious: #ec835a;
   --status-critical: #d03b3b;
 
-  /* Type */
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
+  /* Type. The two --font-*-loaded variables are set by next/font in the root
+     layout; the system stack behind them is what renders if a face fails, and
+     it is metric-compatible enough that the swap does not move a line. */
+  --font-sans: var(--font-sans-loaded), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-mono-loaded), ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
 
   /* Space, 4px base */
   --space-1: 4px;
@@ -152,6 +163,11 @@
   --accent-soft: rgba(47, 195, 165, 0.14);
   --accent-contrast: #04212c;
 
+  --accent-warm: #f0864f;
+  --accent-warm-strong: #ffa273;
+  --accent-warm-soft: rgba(240, 134, 79, 0.16);
+  --accent-warm-contrast: #2a1206;
+
   --brand-band: var(--brand-navy-deep);
 
   --series-1: #2fc3a5;
@@ -214,6 +230,9 @@
   --color-accent-strong: var(--accent-strong);
   --color-accent-soft: var(--accent-soft);
   --color-accent-contrast: var(--accent-contrast);
+  --color-accent-warm: var(--accent-warm);
+  --color-accent-warm-strong: var(--accent-warm-strong);
+  --color-accent-warm-soft: var(--accent-warm-soft);
 
   --color-series-1: var(--series-1);
   --color-series-2: var(--series-2);
@@ -426,6 +445,118 @@ body {
    colour under it here. The band draws its own. */
 .brand-band a:focus-visible {
   box-shadow: 0 0 0 2px var(--brand-band), 0 0 0 4px var(--brand-band-accent);
+}
+
+/* --------------------------------------------------------------------------- */
+/* Editorial surfaces                                                          */
+/* --------------------------------------------------------------------------- */
+
+/* The hero ground. A navy-to-teal gradient with a contour field over it: the
+   depth comes from layered lighting rather than a blur, so text on top keeps
+   its contrast in both themes. The contours read as topography at a glance and
+   as a density map on a second look, which is the right note for a product
+   about where a population piles up. */
+.hero-surface {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(120% 140% at 12% 0%, rgba(79, 216, 188, 0.28) 0%, transparent 55%),
+    radial-gradient(90% 120% at 100% 20%, rgba(10, 158, 132, 0.35) 0%, transparent 60%),
+    linear-gradient(152deg, var(--brand-navy) 0%, var(--brand-navy-deep) 62%, #02121f 100%);
+  color: var(--brand-band-ink);
+}
+
+/* Signal paths: faint concentric contours drifting off the top-left corner.
+   Drawn with gradients rather than an image so it costs no request and scales
+   to any viewport. */
+.hero-surface::before {
+  content: "";
+  position: absolute;
+  inset: -40% -10% -10% -30%;
+  z-index: -1;
+  background-image:
+    repeating-radial-gradient(
+      circle at 22% 18%,
+      rgba(232, 240, 239, 0.055) 0px,
+      rgba(232, 240, 239, 0.055) 1px,
+      transparent 1px,
+      transparent 42px
+    );
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+/* A single hairline sweep that catches the eye along the lower edge, so the
+   hero resolves against the page instead of ending abruptly. */
+.hero-surface::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 1px;
+  z-index: -1;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--brand-band-accent) 35%,
+    rgba(79, 216, 188, 0.15) 70%,
+    transparent 100%
+  );
+  opacity: 0.7;
+}
+
+.hero-surface .t-overline {
+  color: var(--brand-band-accent);
+}
+
+/* Translucent card for use on the hero ground only. Kept light on the blur and
+   heavy on the border, because a glass panel that loses its edge loses its
+   contrast with it. */
+.hero-panel {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(232, 240, 239, 0.18);
+  backdrop-filter: blur(6px);
+  border-radius: var(--radius-lg);
+}
+
+.hero-surface a:focus-visible,
+.hero-surface button:focus-visible {
+  box-shadow: 0 0 0 2px var(--brand-navy-deep), 0 0 0 4px var(--brand-band-accent);
+}
+
+/* Section rhythm. Pages alternate between full-bleed bands and contained
+   sections rather than stacking identical cards, which is what made the old
+   dashboard read as a template. */
+.section-rule {
+  border-top: 1px solid var(--border-hairline);
+}
+
+/* A quiet contour wash for interior sections that need to feel distinct from
+   the page without becoming another card. */
+.section-tint {
+  background:
+    radial-gradient(80% 120% at 100% 0%, var(--accent-soft) 0%, transparent 60%),
+    var(--surface-sunken);
+}
+
+/* Reveal primitive shared by the Animaster-derived components. The transform
+   is set inline by GSAP; this only establishes the starting state so nothing
+   flashes before the timeline attaches. Under reduced motion the element is
+   simply visible from the start. */
+.reveal-init {
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-init {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .hero-surface::before {
+    display: none;
+  }
 }
 
 @media print {

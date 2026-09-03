@@ -1,145 +1,262 @@
 "use client";
 
-import { Search } from "lucide-react";
+import { LayoutGrid, Rows3, Search } from "lucide-react";
 import { QUEUE } from "@/lib/content";
-import { formatPercent } from "@/lib/format";
+import type { QueueView } from "@/components/queue/QueueClient";
 
 export type SpeciesFilter = "all" | "Dog" | "Cat";
+export type LifeStageFilter = "all" | "juvenile" | "adult" | "senior" | "unknown";
+export type RiskFilter = "all" | "warning" | "serious" | "critical";
 export type SortKey = "risk" | "days" | "arrival";
 
-const SPECIES: Array<{ value: SpeciesFilter; label: string }> = [
-  { value: "all", label: QUEUE.filterSpecies[0] },
-  { value: "Dog", label: QUEUE.filterSpecies[1] },
-  { value: "Cat", label: QUEUE.filterSpecies[2] },
-];
-
-const SORTS: Array<{ value: SortKey; label: string }> = [
-  { value: "risk", label: QUEUE.filterSort[0] },
-  { value: "days", label: QUEUE.filterSort[1] },
-  { value: "arrival", label: QUEUE.filterSort[2] },
-];
-
-export function QueueControls({
-  species,
-  threshold,
-  sort,
-  search,
-  onSpecies,
-  onThreshold,
-  onThresholdCommit,
-  onSort,
-  onSearch,
-}: {
+export interface QueueFilters {
   species: SpeciesFilter;
-  threshold: number;
-  sort: SortKey;
+  lifeStage: LifeStageFilter;
+  risk: RiskFilter;
+  minDays: number;
+  hideStale: boolean;
   search: string;
-  onSpecies: (value: SpeciesFilter) => void;
-  onThreshold: (value: number) => void;
-  onThresholdCommit: (value: number) => void;
-  onSort: (value: SortKey) => void;
-  onSearch: (value: string) => void;
+  sort: SortKey;
+}
+
+export const EMPTY_FILTERS: QueueFilters = {
+  species: "all",
+  lifeStage: "all",
+  risk: "all",
+  minDays: 0,
+  hideStale: false,
+  search: "",
+  sort: "risk",
+};
+
+/**
+ * The sticky command bar.
+ *
+ * It stays on screen while the list scrolls, because the whole point of a
+ * triage queue is narrowing it, and a filter you have to scroll back up to
+ * reach is one you stop using.
+ */
+export function QueueControls({
+  filters,
+  onChange,
+  view,
+  onViewChange,
+  scoring,
+  resultCount,
+}: {
+  filters: QueueFilters;
+  onChange: (next: QueueFilters) => void;
+  view: QueueView;
+  onViewChange: (next: QueueView) => void;
+  scoring: boolean;
+  resultCount: number;
 }) {
+  const set = <K extends keyof QueueFilters>(key: K, value: QueueFilters[K]) =>
+    onChange({ ...filters, [key]: value });
+
   return (
-    <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
-      <fieldset>
-        <legend className="t-caption" style={{ color: "var(--ink-muted)" }}>
-          Species
-        </legend>
-        <div className="mt-1.5 flex gap-1">
-          {SPECIES.map((option) => {
-            const active = species === option.value;
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => onSpecies(option.value)}
-                aria-pressed={active}
-                className="t-small rounded-[var(--radius-full)] border px-3 py-1.5"
-                style={{
-                  borderColor: active ? "var(--accent)" : "var(--border-hairline)",
-                  background: active ? "var(--surface-sunken)" : "var(--surface-card)",
-                  color: active ? "var(--ink-primary)" : "var(--ink-secondary)",
-                }}
-              >
-                {option.label}
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
-
-      <div className="min-w-[220px]">
-        <label className="t-caption" htmlFor="risk-threshold" style={{ color: "var(--ink-muted)" }}>
-          {`Show animals above ${formatPercent(threshold)} risk`}
-        </label>
-        <input
-          id="risk-threshold"
-          type="range"
-          min={0.3}
-          max={0.9}
-          step={0.01}
-          value={threshold}
-          onChange={(event) => onThreshold(Number(event.target.value))}
-          onPointerUp={(event) => onThresholdCommit(Number(event.currentTarget.value))}
-          onKeyUp={(event) => onThresholdCommit(Number(event.currentTarget.value))}
-          onBlur={(event) => onThresholdCommit(Number(event.currentTarget.value))}
-          className="mt-2 w-full"
-          style={{ accentColor: "var(--accent)" }}
-        />
-      </div>
-
-      <div>
-        <label className="t-caption" htmlFor="queue-sort" style={{ color: "var(--ink-muted)" }}>
-          Order
-        </label>
-        <select
-          id="queue-sort"
-          value={sort}
-          onChange={(event) => onSort(event.target.value as SortKey)}
-          className="t-small mt-1.5 block rounded-[var(--radius-md)] border px-3 py-2"
-          style={{
-            borderColor: "var(--border-hairline)",
-            background: "var(--surface-card)",
-            color: "var(--ink-primary)",
-          }}
-        >
-          {SORTS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="min-w-[200px] flex-1">
-        <label className="t-caption" htmlFor="queue-search" style={{ color: "var(--ink-muted)" }}>
-          Search
-        </label>
-        <div className="relative mt-1.5">
+    <div
+      className="sticky top-16 z-20 border p-3 lg:top-16"
+      style={{
+        background: "var(--surface-card)",
+        borderColor: "var(--border-hairline)",
+        borderRadius: "var(--radius-lg)",
+        boxShadow: "var(--elev-1)",
+      }}
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="relative flex min-w-[13rem] flex-1 items-center">
+          <span className="sr-only">{QUEUE.searchPlaceholder}</span>
           <Search
             size={16}
             strokeWidth={1.5}
             aria-hidden="true"
-            className="absolute left-3 top-1/2 -translate-y-1/2"
-            style={{ color: "var(--ink-muted)" }}
+            className="pointer-events-none absolute left-3"
+            color="var(--ink-muted)"
           />
           <input
-            id="queue-search"
             type="search"
-            value={search}
-            onChange={(event) => onSearch(event.target.value)}
+            value={filters.search}
+            onChange={(event) => set("search", event.target.value)}
             placeholder={QUEUE.searchPlaceholder}
             className="t-small w-full rounded-[var(--radius-md)] border py-2 pl-9 pr-3"
             style={{
+              background: "var(--surface-page)",
               borderColor: "var(--border-hairline)",
-              background: "var(--surface-card)",
               color: "var(--ink-primary)",
             }}
           />
+        </label>
+
+        <Select
+          label="Species"
+          value={filters.species}
+          onChange={(value) => set("species", value as SpeciesFilter)}
+          options={[
+            ["all", "All animals"],
+            ["Dog", "Dogs"],
+            ["Cat", "Cats"],
+          ]}
+        />
+
+        <Select
+          label="Life stage"
+          value={filters.lifeStage}
+          onChange={(value) => set("lifeStage", value as LifeStageFilter)}
+          options={[
+            ["all", "All ages"],
+            ["juvenile", "Under a year"],
+            ["adult", "Adult"],
+            ["senior", "Senior"],
+            ["unknown", "Age not recorded"],
+          ]}
+        />
+
+        {/* A risk filter with nothing to filter on would be a lie about what
+            the page knows, so it is absent rather than disabled. */}
+        {scoring ? (
+          <Select
+            label="Risk band"
+            value={filters.risk}
+            onChange={(value) => set("risk", value as RiskFilter)}
+            options={[
+              ["all", "Any risk"],
+              ["warning", "Warning and above"],
+              ["serious", "Serious and above"],
+              ["critical", "Critical only"],
+            ]}
+          />
+        ) : null}
+
+        <Select
+          label="Minimum wait"
+          value={String(filters.minDays)}
+          onChange={(value) => set("minDays", Number(value))}
+          options={[
+            ["0", "Any wait"],
+            ["14", "14+ days"],
+            ["30", "30+ days"],
+            ["60", "60+ days"],
+            ["90", "90+ days"],
+          ]}
+        />
+
+        <Select
+          label="Sort"
+          value={filters.sort}
+          onChange={(value) => set("sort", value as SortKey)}
+          options={
+            scoring
+              ? ([
+                  ["risk", "Sort by risk"],
+                  ["days", "Sort by days waiting"],
+                  ["arrival", "Sort by arrival date"],
+                ] as [string, string][])
+              : ([
+                  ["days", "Sort by days waiting"],
+                  ["arrival", "Sort by arrival date"],
+                ] as [string, string][])
+          }
+        />
+
+        <label
+          className="t-small inline-flex cursor-pointer items-center gap-2 rounded-[var(--radius-md)] border px-3 py-2"
+          style={{ borderColor: "var(--border-hairline)", color: "var(--ink-secondary)" }}
+        >
+          <input
+            type="checkbox"
+            checked={filters.hideStale}
+            onChange={(event) => set("hideStale", event.target.checked)}
+          />
+          Hide possibly stale
+        </label>
+
+        <div className="ml-auto flex items-center gap-1" role="group" aria-label="View">
+          <ViewToggle
+            active={view === "table"}
+            onClick={() => onViewChange("table")}
+            label={QUEUE.viewTable}
+          >
+            <Rows3 size={16} strokeWidth={1.5} aria-hidden="true" />
+          </ViewToggle>
+          <ViewToggle
+            active={view === "cards"}
+            onClick={() => onViewChange("cards")}
+            label={QUEUE.viewCards}
+          >
+            <LayoutGrid size={16} strokeWidth={1.5} aria-hidden="true" />
+          </ViewToggle>
         </div>
       </div>
+
+      <p className="sr-only" aria-live="polite">
+        {`${resultCount} animals match the current filters.`}
+      </p>
     </div>
+  );
+}
+
+function Select({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: [string, string][];
+}) {
+  return (
+    <label className="inline-flex items-center">
+      <span className="sr-only">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="t-small rounded-[var(--radius-md)] border px-3 py-2"
+        style={{
+          background: "var(--surface-page)",
+          borderColor: "var(--border-hairline)",
+          color: "var(--ink-primary)",
+        }}
+      >
+        {options.map(([optionValue, optionLabel]) => (
+          <option key={optionValue} value={optionValue}>
+            {optionLabel}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function ViewToggle({
+  active,
+  onClick,
+  label,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      title={label}
+      className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] border"
+      style={{
+        borderColor: active ? "transparent" : "var(--border-hairline)",
+        background: active ? "var(--accent)" : "var(--surface-card)",
+        color: active ? "var(--accent-contrast)" : "var(--ink-secondary)",
+      }}
+    >
+      {children}
+      <span className="sr-only">{label}</span>
+    </button>
   );
 }
 
