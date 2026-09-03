@@ -22,10 +22,15 @@ export function StayExplanation({
   stay,
   scoring,
   channels,
+  drivers,
 }: {
   stay: ScoredStay;
   scoring: boolean;
   channels: readonly InterventionChannel[];
+  /** Population-level importance, passed in once rather than carried on every
+   *  stay. It is the same list for every animal, which is why the panel below
+   *  says so in as many words. */
+  drivers: readonly { feature: string; gain: number }[];
 }) {
   const suggestion = suggestChannel(stay);
   const channel = resolveChannel(channels, suggestion.channel);
@@ -82,7 +87,7 @@ export function StayExplanation({
       </div>
 
       <div className="space-y-6">
-        {scoring && stay.drivers.length > 0 ? (
+        {scoring && drivers.length > 0 ? (
           <div>
             <h3 className="t-overline" style={{ color: "var(--ink-muted)" }}>
               {QUEUE.headingDrivers}
@@ -91,7 +96,7 @@ export function StayExplanation({
               {DETAIL.driversNote}
             </p>
             <div className="mt-3">
-              <DriverBars drivers={stay.drivers} limit={4} />
+              <DriverBars drivers={drivers} limit={4} />
             </div>
           </div>
         ) : null}

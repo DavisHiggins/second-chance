@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import interventionsFixture from "@/data/interventions.json";
 import { getCurrentShelterData } from "@/lib/austin/current.server";
 import { loadScoringModel, riskBand, scoreEpisodes, type RiskBand } from "@/lib/model/registry.server";
@@ -59,7 +60,6 @@ export interface ScoredStay extends CurrentStay {
   riskBand: RiskBand | null;
   /** Why no prediction, when there is none. Rendered to the user verbatim. */
   predictionUnavailableReason: string | null;
-  drivers: { feature: string; gain: number }[];
 }
 
 export interface ShelterMetrics {
@@ -80,6 +80,10 @@ export interface ShelterView {
   segments: SegmentRow[];
   /** Rows the model declined to score, with the reason, for transparency. */
   unscored: { reason: string; count: number }[];
+  /** Population-level feature importance, shared by every explanation panel.
+   *  One copy per view, not one per animal: it is the same list for all of
+   *  them, and duplicating it is both misleading and expensive. */
+  modelDrivers: { feature: string; gain: number }[];
   definitions: MetricDefinition[];
 }
 
@@ -118,6 +122,7 @@ async function loadShelterView(): Promise<ShelterView> {
       trends: [],
       segments: [],
       unscored: [],
+      modelDrivers: [],
       definitions: [ANIMALS_IN_CARE, MEDIAN_DAYS_TO_ADOPTION, ADOPTED_WITHIN_30D, LONG_STAY_OBSERVED, CURRENT_QUEUE],
     };
   }
@@ -135,7 +140,6 @@ async function loadShelterView(): Promise<ShelterView> {
       pAdopt30d: score?.pAdopt30d ?? null,
       riskBand: riskBand(score?.pLongStay60d ?? null),
       predictionUnavailableReason: score?.unavailableReason ?? null,
-      drivers: score?.drivers ?? [],
     };
   });
 
@@ -147,6 +151,7 @@ async function loadShelterView(): Promise<ShelterView> {
     trends: monthlySeries(data.episodes),
     segments: segmentByLifeStage(data.episodes, (species, age) => lifeStageFor(species, age)),
     unscored: scored.unscored,
+    modelDrivers: scored.drivers,
     definitions: [
       ANIMALS_IN_CARE,
       MEDIAN_DAYS_TO_ADOPTION,
@@ -157,8 +162,56 @@ async function loadShelterView(): Promise<ShelterView> {
   };
 }
 
-/** Memoised for the duration of one render, on top of the hourly source cache. */
-export const getShelterView = cache(loadShelterView);
+/**
+ * The hourly cache boundary.
+ *
+ * This wraps the derived view rather than the source rows, and that placement
+ * is the whole point. The two current feeds are 6.6MB and 7.4MB of JSON;
+ * Next's data cache refuses anything over 2MB, so caching them was a silent
+ * no-op that also surfaced as an unhandled rejection in development. Worse,
+ * every route then rebuilt seventeen thousand episodes and re-ran the
+ * occupancy sweep for itself. The finished view is a few hundred kilobytes,
+ * so it caches cleanly and the expensive join and scoring happen once an hour
+ * instead of once per page.
+ *
+ * A failed read is deliberately not cached. `loadShelterView` throws when the
+ * feed could not be read, so the rejection never reaches the cache, and the
+ * unavailable state is rebuilt below. Otherwise a thirty-second outage at
+ * Austin would pin the whole site to "data unavailable" for an hour.
+ */
+class FeedUnavailableError extends Error {
+  readonly view: ShelterView;
+
+  constructor(view: ShelterView) {
+    super(view.status.problem ?? "The Austin feed could not be read.");
+    this.name = "FeedUnavailableError";
+    this.view = view;
+  }
+}
+
+const loadCachedShelterView = unstable_cache(
+  async (): Promise<ShelterView> => {
+    const view = await loadShelterView();
+    if (!view.status.retrievedAt) throw new FeedUnavailableError(view);
+    return view;
+  },
+  ["shelter-view-v1"],
+  { revalidate: 3600, tags: ["austin"] },
+);
+
+async function loadShelterViewOrUnavailable(): Promise<ShelterView> {
+  try {
+    return await loadCachedShelterView();
+  } catch (cause) {
+    if (cause instanceof FeedUnavailableError) return cause.view;
+    // Rebuilt rather than rethrown, so a failure renders the unavailable
+    // state instead of a framework error page.
+    return loadShelterView();
+  }
+}
+
+/** Memoised for the duration of one render, on top of the hourly view cache. */
+export const getShelterView = cache(loadShelterViewOrUnavailable);
 
 /* -------------------------------------------------------------------------- */
 /* Orderings                                                                   */
@@ -200,6 +253,41 @@ export function needsAttentionNow(view: ShelterView, limit = 5): ScoredStay[] {
   return queueOrder(view.stays, view.scoringStatus)
     .filter((stay) => stay.pLongStay60d !== null)
     .slice(0, limit);
+}
+
+/**
+ * The projection the public grid receives.
+ *
+ * `ScoredStay` carries `pLongStay60d`, `riskBand` and the unavailable reason.
+ * The Discover cards never render any of them, but passing whole stays to a
+ * client component serialises every field into the page payload, where anyone
+ * can read the model's estimate for a named animal in devtools. The promise
+ * that a member of the public is not shown a risk score has to hold in the
+ * bytes, not only in the markup, so the public route gets a type that has no
+ * field to leak.
+ */
+export interface PublicStay {
+  episodeId: string;
+  animalId: string;
+  name: string | null;
+  species: string;
+  breed: string | null;
+  daysInCare: number;
+  currentAgeDays: number | null;
+  possiblyStale: boolean;
+}
+
+export function toPublicStays(stays: readonly ScoredStay[]): PublicStay[] {
+  return stays.map((stay) => ({
+    episodeId: stay.episodeId,
+    animalId: stay.animalId,
+    name: stay.name,
+    species: stay.species,
+    breed: stay.breed,
+    daysInCare: stay.daysInCare,
+    currentAgeDays: stay.currentAgeDays,
+    possiblyStale: stay.possiblyStale,
+  }));
 }
 
 export function findStay(view: ShelterView, id: string): ScoredStay {

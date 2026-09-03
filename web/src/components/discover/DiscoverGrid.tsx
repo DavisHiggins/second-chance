@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { DISCOVER } from "@/lib/content";
 import { formatAge, formatCount } from "@/lib/format";
 import MonogramTile from "@/components/ui/MonogramTile";
-import type { ScoredStay } from "@/lib/shelter.server";
+import type { PublicStay } from "@/lib/shelter.server";
 import { DUR, EASE_OUT } from "@/lib/motion";
 
 const StaggerReveal = dynamic(() => import("@/components/motion/StaggerReveal"), {
@@ -26,13 +26,14 @@ const FILTERS: { id: SpeciesFilter; label: string }[] = [
 /**
  * The public grid of current records.
  *
- * Cards carry no probability and no risk band. A member of the public reading
- * about a specific animal does not need a model's estimate of how long it will
- * wait, and showing one would invite exactly the reading the guardrails
- * forbid. What they do carry is how long the animal has been there, which is a
+ * Cards carry no probability and no risk band, and the `PublicStay` they are
+ * given has nowhere to put one. A member of the public reading about a
+ * specific animal does not need a model's estimate of how long it will wait,
+ * and showing one would invite exactly the reading the guardrails forbid.
+ * What they do carry is how long the animal has been there, which is a
  * measurement and is the thing that makes the case.
  */
-export function DiscoverGrid({ stays }: { stays: ScoredStay[] }) {
+export function DiscoverGrid({ stays }: { stays: PublicStay[] }) {
   const [species, setSpecies] = useState<SpeciesFilter>("all");
 
   const visible = useMemo(
@@ -105,7 +106,7 @@ export function DiscoverGrid({ stays }: { stays: ScoredStay[] }) {
   );
 }
 
-function StayCard({ stay }: { stay: ScoredStay }) {
+function StayCard({ stay }: { stay: PublicStay }) {
   return (
     <motion.div
       whileHover={{ y: -3 }}

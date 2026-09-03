@@ -89,8 +89,6 @@ export interface EpisodeScore {
   pAdopt30d: number | null;
   /** Set when scoring was refused, and shown to the user as the reason. */
   unavailableReason: string | null;
-  /** Features that moved this prediction most, for the explanation panel. */
-  drivers: { feature: string; gain: number }[];
 }
 
 export type RiskBand = "critical" | "serious" | "warning" | "ok";
@@ -114,6 +112,16 @@ export interface ScoredEpisodes {
   scoringStatus: ScoringStatus;
   /** Rows the model declined to score, by reason, for the data-quality panel. */
   unscored: { reason: string; count: number }[];
+  /**
+   * What the model relies on across the population, for the explanation panel.
+   *
+   * This lives on the result rather than on each score because it is the same
+   * list for every animal: it is mean gain over the training set, not a
+   * per-row attribution. Copying it onto a thousand stays inflated the queue
+   * payload by roughly 800KB and quietly implied a per-animal explanation the
+   * artifact does not contain.
+   */
+  drivers: { feature: string; gain: number }[];
 }
 
 /**
@@ -142,13 +150,13 @@ export function scoreEpisodes(
         pLongStay60d: null,
         pAdopt30d: null,
         unavailableReason: model.note ?? "No validated model is currently scoring.",
-        drivers: [],
       });
     }
     return {
       scores,
       scoringStatus: model.scoringStatus,
       unscored: [{ reason: model.note ?? "No validated model is currently scoring.", count: toScore.length }],
+      drivers: [],
     };
   }
 
@@ -161,6 +169,7 @@ export function scoreEpisodes(
       scores,
       scoringStatus: "unavailable",
       unscored: [{ reason: "Shelter context features could not be built.", count: toScore.length }],
+      drivers: [],
     };
   }
 
@@ -177,7 +186,6 @@ export function scoreEpisodes(
         pLongStay60d: null,
         pAdopt30d: null,
         unavailableReason: eligibility.reason,
-        drivers: [],
       });
       continue;
     }
@@ -192,7 +200,6 @@ export function scoreEpisodes(
         pLongStay60d: longStayResult.calibrated,
         pAdopt30d: adoptResult.calibrated,
         unavailableReason: null,
-        drivers: importance.slice(0, 5),
       });
     } catch (cause) {
       const reason =
@@ -205,7 +212,6 @@ export function scoreEpisodes(
         pLongStay60d: null,
         pAdopt30d: null,
         unavailableReason: reason,
-        drivers: [],
       });
     }
   }
@@ -214,5 +220,6 @@ export function scoreEpisodes(
     scores,
     scoringStatus: model.scoringStatus,
     unscored: [...unscoredCounts.entries()].map(([reason, count]) => ({ reason, count })),
+    drivers: importance.slice(0, 8),
   };
 }

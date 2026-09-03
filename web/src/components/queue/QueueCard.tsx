@@ -26,10 +26,12 @@ export function QueueCard({
   stay,
   scoring,
   channels,
+  drivers,
 }: {
   stay: ScoredStay;
   scoring: boolean;
   channels: readonly InterventionChannel[];
+  drivers: readonly { feature: string; gain: number }[];
 }) {
   const reducedMotion = useReducedMotion();
   const [expanded, setExpanded] = useState(false);
@@ -138,7 +140,7 @@ export function QueueCard({
               className="mt-4 border-t pt-4"
               style={{ borderColor: "var(--border-hairline)" }}
             >
-              <StayExplanation stay={stay} scoring={scoring} channels={channels} />
+              <StayExplanation stay={stay} scoring={scoring} channels={channels} drivers={drivers} />
             </motion.div>
           </motion.div>
         ) : null}

@@ -34,12 +34,14 @@ export function QueueRow({
   stay,
   scoring,
   channels,
+  drivers,
   expanded,
   onToggle,
 }: {
   stay: ScoredStay;
   scoring: boolean;
   channels: readonly InterventionChannel[];
+  drivers: readonly { feature: string; gain: number }[];
   expanded: boolean;
   onToggle: () => void;
 }) {
@@ -177,7 +179,7 @@ export function QueueRow({
                   animate="show"
                   className="py-5"
                 >
-                  <StayExplanation stay={stay} scoring={scoring} channels={channels} />
+                  <StayExplanation stay={stay} scoring={scoring} channels={channels} drivers={drivers} />
                 </motion.div>
               </motion.div>
             </td>

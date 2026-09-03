@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { QUEUE } from "@/lib/content";
 import { formatCount } from "@/lib/format";
 import QueueControls, { type QueueFilters, EMPTY_FILTERS } from "@/components/queue/QueueControls";
@@ -28,18 +28,31 @@ export type QueueView = "table" | "cards";
  * disabled with a tooltip; it is absent, because a control that promises an
  * ordering the data cannot produce is worse than no control.
  */
+/**
+ * How many rows are rendered before the reader asks for more.
+ *
+ * The whole filtered list is held in memory, but rendering all of it is not
+ * free: at nearly a thousand open stays the server-rendered table came to
+ * 3.7MB of markup, almost all of it inline styles on rows nobody scrolled to.
+ * A triage queue is worked from the top, so the tail is paid for and unread.
+ */
+const PAGE_SIZE = 50;
+
 export function QueueClient({
   stays,
   scoring,
   channels,
+  drivers,
 }: {
   stays: ScoredStay[];
   scoring: boolean;
   channels: InterventionChannel[];
+  drivers: { feature: string; gain: number }[];
 }) {
   const [filters, setFilters] = useState<QueueFilters>(EMPTY_FILTERS);
   const [view, setView] = useState<QueueView>("table");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [shown, setShown] = useState(PAGE_SIZE);
 
   const visible = useMemo(() => {
     const search = filters.search.trim().toLowerCase();
@@ -78,6 +91,14 @@ export function QueueClient({
     return sorted;
   }, [stays, filters]);
 
+  // Narrowing the list is a new question, so it starts at the top again.
+  useEffect(() => {
+    setShown(PAGE_SIZE);
+  }, [filters]);
+
+  const page = useMemo(() => visible.slice(0, shown), [visible, shown]);
+  const remaining = visible.length - page.length;
+
   const filtersActive =
     filters.species !== "all" ||
     filters.lifeStage !== "all" ||
@@ -98,7 +119,11 @@ export function QueueClient({
       />
 
       <p className="t-small" aria-live="polite" style={{ color: "var(--ink-muted)" }}>
-        {`${formatCount(visible.length)} of ${formatCount(stays.length)} open stays`}
+        {visible.length > shown
+          ? `Showing ${formatCount(shown)} of ${formatCount(visible.length)} matching stays, out of ${formatCount(
+              stays.length,
+            )} open`
+          : `${formatCount(visible.length)} of ${formatCount(stays.length)} open stays`}
       </p>
 
       {visible.length === 0 ? (
@@ -127,9 +152,9 @@ export function QueueClient({
       ) : view === "cards" ? (
         <StaggerReveal key="cards" selector=":scope > ul > li" stagger={0.028} distance={12}>
           <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {visible.map((stay) => (
+            {page.map((stay) => (
               <li key={stay.episodeId}>
-                <QueueCard stay={stay} scoring={scoring} channels={channels} />
+                <QueueCard stay={stay} scoring={scoring} channels={channels} drivers={drivers} />
               </li>
             ))}
           </ul>
@@ -169,12 +194,13 @@ export function QueueClient({
               </tr>
             </thead>
             <tbody>
-              {visible.map((stay) => (
+              {page.map((stay) => (
                 <QueueRow
                   key={stay.episodeId}
                   stay={stay}
                   scoring={scoring}
                   channels={channels}
+                  drivers={drivers}
                   expanded={expanded === stay.episodeId}
                   onToggle={() =>
                     setExpanded((current) => (current === stay.episodeId ? null : stay.episodeId))
@@ -185,6 +211,26 @@ export function QueueClient({
           </table>
         </div>
       )}
+
+      {remaining > 0 ? (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => setShown((current) => current + PAGE_SIZE)}
+            className="t-small rounded-[var(--radius-md)] border px-4 py-2.5 font-medium"
+            style={{
+              borderColor: "var(--border-hairline)",
+              background: "var(--surface-card)",
+              color: "var(--ink-primary)",
+            }}
+          >
+            {`Show ${formatCount(Math.min(PAGE_SIZE, remaining))} more`}
+            <span className="t-caption ml-2" style={{ color: "var(--ink-muted)" }}>
+              {`${formatCount(remaining)} still to review`}
+            </span>
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

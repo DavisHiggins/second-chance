@@ -19,10 +19,6 @@ import { SOCRATA_DOMAIN } from "./datasets";
  * X-App-Token. It must never be given a NEXT_PUBLIC_ prefix.
  */
 
-/** Austin refreshes the current feeds hourly, so there is nothing to gain from
- *  asking more often than that. */
-export const CURRENT_FEED_TTL_SECONDS = 3600;
-
 /** SODA 2.0 caps a single page at 50,000 rows. Both current feeds are below
  *  that today, but paging is implemented properly so growth cannot silently
  *  truncate a dataset the way a bare $limit would. */
@@ -182,9 +178,9 @@ async function fetchAllPages(
 /**
  * Coalesces concurrent identical fetches within a single server instance.
  *
- * `unstable_cache` deduplicates across requests once a value is cached, but
- * several requests arriving during a cold revalidate would each start their
- * own download. This map means the first one wins and the rest await it.
+ * The view cache upstream means a cold revalidate is the only time this runs,
+ * but several requests can arrive during that window and would each start
+ * their own download. This map means the first one wins and the rest await it.
  */
 const inFlight = new Map<string, Promise<FetchResult>>();
 
@@ -200,58 +196,32 @@ function dedupe(key: string, run: () => Promise<FetchResult>): Promise<FetchResu
 }
 
 /**
- * A per-process copy of the last successful read, with the same TTL.
+ * Full-dataset read.
  *
- * Next's data cache refuses any entry over 2MB, and a full current feed is
- * several times that, so `unstable_cache` silently declines to store these
- * results. Without this layer every regenerating route would re-download both
- * feeds. Keeping the value in the module means the six routes that regenerate
- * on the same hourly tick, inside the same instance, share one download.
- *
- * It is a cache, not a fallback: entries expire on the same schedule and a
- * failed fetch never resurrects a stale one, because serving old rows as
- * though they were current is the exact failure this rewrite exists to remove.
+ * There is deliberately no cache wrapper here. A whole feed is several times
+ * the 2MB ceiling on Next's data cache, so wrapping this in `unstable_cache`
+ * stored nothing, logged a failure on every read and surfaced as an unhandled
+ * rejection in development. Caching happens one level up instead, around the
+ * derived view in `shelter.server.ts`, which is small enough to store and is
+ * the thing pages actually need. The in-flight map below still collapses
+ * concurrent identical reads within an instance.
  */
-interface ProcessCacheEntry {
-  value: FetchResult;
-  expiresAt: number;
-}
-
-const processCache = new Map<string, ProcessCacheEntry>();
-
-/**
- * Cached full-dataset read.
- *
- * The cache key includes the dataset id and the selected columns, so
- * repointing a dataset by environment variable cannot serve the previous
- * rows out of cache.
- */
-export async function fetchDataset(
+export function fetchDataset(
   dataset: DatasetRef,
   select: readonly string[],
-  options: { ttlSeconds?: number; where?: string } = {},
+  options: { where?: string } = {},
 ): Promise<FetchResult> {
-  const ttl = options.ttlSeconds ?? CURRENT_FEED_TTL_SECONDS;
   const key = `austin:${dataset.id}:${select.join(",")}:${options.where ?? ""}`;
-
-  const fresh = processCache.get(key);
-  if (fresh && fresh.expiresAt > Date.now()) return fresh.value;
-
-  const cached = unstable_cache(
-    () => dedupe(key, () => fetchAllPages(dataset, select, options.where)),
-    [key],
-    { revalidate: ttl, tags: [`austin:${dataset.id}`] },
-  );
-
-  const value = await cached();
-  processCache.set(key, { value, expiresAt: Date.now() + ttl * 1000 });
-  return value;
+  return dedupe(key, () => fetchAllPages(dataset, select, options.where));
 }
 
 /**
  * A single aggregate query, for cheap summaries that would otherwise require
  * downloading a whole dataset. Used against the archive, where a full pull is
  * 347,000 rows and belongs in the offline ETL rather than a page request.
+ *
+ * This one is cached directly: an aggregate response is a handful of rows and
+ * fits the data cache comfortably.
  */
 export async function fetchAggregate(
   dataset: DatasetRef,

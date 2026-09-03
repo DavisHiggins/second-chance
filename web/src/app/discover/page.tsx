@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getShelterView } from "@/lib/shelter.server";
+import { getShelterView, toPublicStays } from "@/lib/shelter.server";
 import { DISCOVER } from "@/lib/content";
 import { formatCount } from "@/lib/format";
 import DiscoverGrid from "@/components/discover/DiscoverGrid";
@@ -59,7 +59,7 @@ export default async function DiscoverPage() {
         </div>
       </header>
 
-      <DiscoverGrid stays={view.stays} />
+      <DiscoverGrid stays={toPublicStays(view.stays)} />
     </div>
   );
 }

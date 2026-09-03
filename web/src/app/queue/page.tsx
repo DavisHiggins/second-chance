@@ -57,7 +57,12 @@ export default async function QueuePage() {
       ) : null}
 
       <MotionChild index={3}>
-        <QueueClient stays={ordered} scoring={scoring} channels={channels} />
+        <QueueClient
+          stays={ordered}
+          scoring={scoring}
+          channels={channels}
+          drivers={view.modelDrivers}
+        />
       </MotionChild>
     </PageMotion>
   );
