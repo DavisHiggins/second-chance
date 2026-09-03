@@ -1,8 +1,9 @@
 # SecondChance — web app
 
-The front end for SecondChance, which forecasts how long each animal at the
-Austin Animal Center will wait for adoption so staff attention goes where it
-changes an outcome.
+The front end for SecondChance, which estimates how long each animal at the
+Austin Animal Center may wait for adoption so staff attention goes where it
+changes an outcome. It reads the City of Austin's public open-data feeds
+directly; there are no fixtures and no stored snapshot to fall back to.
 
 **The rule that overrides everything:** the system routes help *toward*
 animals. Nothing in this interface may present a score as a reason to
@@ -23,17 +24,34 @@ For a production check:
 npm run build && npx next start -p 3477
 ```
 
-Port 3210 is taken by another dev server on this machine; pick something else.
+Everything is optional in `.env.example`; copy it to `.env.local` only if you
+want to set a Socrata app token or repoint a dataset id. With no env file the
+app reads Austin's feeds anonymously, which is fine for development.
 
-Copy `.env.example` to `.env.local` if you want to point at a live API. With no
-env file the app runs on the fixtures in `src/data/` and says so in the header.
+If a feed cannot be read, the app shows an unavailable state. It never
+substitutes stored data, and there is no code path that can.
 
 ## Stack
 
 Next.js 15 (App Router), React 19, TypeScript strict, Tailwind v4, Recharts for
-charts, Framer Motion for motion. No component library. Data fetching is server
-components calling `src/lib/dataSource.ts`; loading states are Suspense
-boundaries with skeletons.
+charts, Framer Motion and GSAP for motion. No component library.
+
+Data flows in one direction and pages only ever see the last step:
+
+```
+lib/austin/datasets.ts      dataset ids and the columns we ask for
+lib/austin/client.server.ts paged Socrata reads, retries, no found_address
+lib/austin/schemas.ts       zod validation; rejected rows are counted
+lib/austin/build-episodes.ts intake/outcome join -> episodes
+lib/austin/current-inventory.ts open episodes at an as-of time
+lib/model/registry.server.ts scores them against the committed artifact
+lib/shelter.server.ts       the only module a page imports
+```
+
+An episode is one stay, not one animal, so an animal that comes back three
+times has three episode ids. The hourly cache sits around the finished view in
+`shelter.server.ts`, not around the source rows: a feed is several megabytes
+and Next's data cache refuses anything over 2MB.
 
 This deviates from the original spec, which asked for Vite + Wouter +
 TanStack Query. Everything else in the spec package is honoured.
@@ -55,11 +73,26 @@ TanStack Query. Everything else in the spec package is honoured.
   "not measured", never 0.
 - Every string comes from `src/lib/content.ts`.
 - Every motion variant comes from `src/lib/motion.ts`.
-- No component imports from `src/data/`; everything goes through
-  `dataSource.ts`.
+- **No page imports below `lib/shelter.server.ts`.** That module is the seam
+  where source data, model output and metric definitions meet, and it is the
+  only place allowed to decide what a page may claim.
+- **A missing value is never a zero.** An unscored animal carries `null`, and
+  the interface says "prediction unavailable" rather than rendering a filler.
+- **Public routes get `PublicStay`, not `ScoredStay`.** Passing a scored object
+  to a client component serialises the probability into the page payload even
+  when no card renders it, so the public projection has no field to leak.
+- **Nothing states a model fact that is not in the artifact.** Version,
+  training date and every metric come from `src/data/model/model.json`. An
+  artifact claiming a future training date is refused and scoring switches
+  off.
 
 ## Checks
 
 ```bash
-npx tsc --noEmit && npx eslint src && npm run build
+npm run typecheck && npm run lint && npm test && npm run build
 ```
+
+`npm test` skips `tests/live-austin.test.ts` by default; set `AUSTIN_LIVE_TESTS=1`
+to run it against the real feeds. `tests/model-parity.test.ts` checks this
+runtime's scoring against golden vectors written by the training script, so the
+TypeScript evaluator and the Python trainer cannot drift apart silently.
