@@ -6,6 +6,8 @@ import { SHELL } from "@/lib/content";
 import Header from "@/components/shell/Header";
 import Footer from "@/components/shell/Footer";
 import Providers from "@/components/shell/Providers";
+import PageTransition from "@/components/shell/PageTransition";
+import RefreshOnReturn from "@/components/shell/RefreshOnReturn";
 import { PREFERENCES_BOOTSTRAP } from "@/components/shell/Preferences";
 import { buildQualityRows } from "@/lib/qualityRows";
 
@@ -55,11 +57,11 @@ export const viewport: Viewport = {
   ],
 };
 
-/* Austin publishes hourly, so the shell revalidates hourly too. Without this
+/* The shell revalidates on the same schedule as the view cache
+   (VIEW_CACHE_SECONDS in lib/austin/status.ts). Without this
    Next would statically prerender the layout at build time and the header
-   would report the freshness of the deployment rather than of the data — which
-   is the exact class of bug this rebuild exists to remove. */
-export const revalidate = 3600;
+   would report the freshness of the deployment rather than of the data. */
+export const revalidate = 1800;
 
 export default async function RootLayout({
   children,
@@ -89,10 +91,11 @@ export default async function RootLayout({
             quality={buildQualityRows(view)}
             unscored={view.unscored}
           />
-          <main id="main" className="mx-auto w-full max-w-[1440px] px-5 py-8 sm:px-6 lg:px-10">
-            {children}
+          <main id="main" className="mx-auto w-full max-w-[1440px] px-4 py-8 sm:px-6 lg:px-10">
+            <PageTransition>{children}</PageTransition>
           </main>
           <Footer />
+          <RefreshOnReturn />
         </Providers>
       </body>
     </html>

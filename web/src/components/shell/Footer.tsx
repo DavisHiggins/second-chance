@@ -1,12 +1,19 @@
 import Image from "next/image";
-import { FOOTER, SHELL, USE_POLICY_FULL } from "@/lib/content";
-import { ALL_DATASETS } from "@/lib/austin/datasets";
+import Link from "next/link";
+import { FOOTER, NAV, SHELL } from "@/lib/content";
+import { SOCRATA_DOMAIN } from "@/lib/austin/datasets";
+import DataDetailsTrigger from "@/components/shell/DataDetailsTrigger";
 
 /**
  * The footer is the brand anchor: the navy band from the logo, carrying the
- * mark, the wordmark set the way the logo sets it, and the use policy
- * verbatim. It holds its colour in both themes on purpose: the header adapts
- * to the reader, the signature does not.
+ * mark and the wordmark set the way the logo sets it. It holds its colour in
+ * both themes on purpose: the header adapts to the reader, the signature does
+ * not.
+ *
+ * It is now concise. The full source list, dataset IDs and the responsible-
+ * use policy moved to the data drawer, About, Impact and How it works, each
+ * one click away from here, so the same three paragraphs no longer sit under
+ * every table.
  */
 export function Footer() {
   const split = SHELL.wordmark.indexOf("Chance");
@@ -14,86 +21,85 @@ export function Footer() {
   const second = split > 0 ? SHELL.wordmark.slice(split) : "";
 
   return (
-    <footer className="brand-band mt-12">
-      <div className="mx-auto max-w-[1440px] px-6 py-10 lg:px-10">
-        <div
-          className="flex flex-wrap items-center gap-x-5 gap-y-3 border-b pb-8"
-          style={{ borderColor: "var(--brand-band-hairline)" }}
-        >
-          {/* h-9 is 64px here, not 36px: @theme inline maps the numeric spacing
-              utilities onto the design system's space scale. */}
-          <Image
-            src="/logo-mark-dark.png"
-            alt=""
-            width={218}
-            height={214}
-            className="h-9 w-9 shrink-0 object-contain"
-          />
-          <p className="t-title" aria-label={SHELL.wordmark}>
-            <span aria-hidden="true">
-              <span style={{ color: "var(--brand-band-ink)" }}>{first}</span>
-              <span style={{ color: "var(--brand-band-accent)" }}>{second}</span>
-            </span>
-          </p>
-          <p className="t-small max-w-[46ch]" style={{ color: "var(--brand-band-ink-muted)" }}>
-            {FOOTER.bandLine}
-          </p>
-        </div>
-
-        <div className="grid gap-8 pt-8 lg:grid-cols-3">
+    <footer id="site-footer" className="site-footer brand-band mt-12">
+      <div className="mx-auto max-w-[1440px] px-5 py-10 sm:px-6 lg:px-10">
+        <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr_1fr]">
           <div>
-            <h2 className="t-overline">{FOOTER.aboutHeading}</h2>
-            <p className="t-small mt-3" style={{ color: "var(--brand-band-ink)" }}>
-              {FOOTER.aboutBody}
+            <p className="inline-flex items-center gap-3" aria-label={SHELL.wordmark}>
+              <Image
+                src="/logo-mark-dark.png"
+                alt=""
+                width={218}
+                height={214}
+                className="h-10 w-10 shrink-0 object-contain"
+              />
+              <span className="t-title" aria-hidden="true">
+                <span style={{ color: "var(--brand-band-ink)" }}>{first}</span>
+                <span style={{ color: "var(--brand-band-accent)" }}>{second}</span>
+              </span>
+            </p>
+            <p className="t-small mt-4 max-w-[52ch]" style={{ color: "var(--brand-band-ink)" }}>
+              {FOOTER.purpose}
+            </p>
+            <p className="t-small mt-4 max-w-[52ch]" style={{ color: "var(--brand-band-ink-muted)" }}>
+              {FOOTER.researchNote}{" "}
+              <Link href="/impact#guardrail" className="underline underline-offset-2" style={{ color: "var(--brand-band-ink)" }}>
+                {FOOTER.policyLink}
+              </Link>
             </p>
           </div>
 
-          <div>
-            <h2 className="t-overline">{FOOTER.sourcesHeading}</h2>
-            {/* All four datasets, each labelled by role. The previous footer
-                listed only the two archives, which stop in May 2025, plus a
-                weather feed and an adoptable-listings service the product does
-                not use. */}
-            <ul className="mt-3 space-y-2">
-              {ALL_DATASETS.map((dataset) => (
-                <li key={dataset.id}>
-                  <a
-                    className="t-small underline underline-offset-2"
+          <nav aria-label="Footer">
+            <h2 className="t-overline">{FOOTER.navHeading}</h2>
+            <ul className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-1">
+              {NAV.map((item) => (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    className="t-small inline-flex min-h-[32px] items-center underline-offset-2 hover:underline"
                     style={{ color: "var(--brand-band-ink)" }}
-                    href={dataset.href}
-                    target="_blank"
-                    rel="noreferrer noopener"
                   >
-                    {dataset.label}
-                  </a>
-                  <span className="t-caption block" style={{ color: "var(--brand-band-ink-muted)" }}>
-                    <span className="font-mono">{dataset.id}</span>
-                    {dataset.refresh === "hourly"
-                      ? " · current, refreshed hourly"
-                      : " · archive, frozen at the May 2025 cutover"}
-                  </span>
+                    {item.label}
+                  </Link>
                 </li>
               ))}
             </ul>
-            <p className="t-caption mt-3" style={{ color: "var(--brand-band-ink-muted)" }}>
-              {FOOTER.sourcesNote}
-            </p>
-          </div>
+          </nav>
 
           <div>
-            <h2 className="t-overline">{FOOTER.policyHeading}</h2>
-            <div className="mt-3 space-y-3">
-              {USE_POLICY_FULL.map((paragraph) => (
-                <p
-                  key={paragraph.slice(0, 32)}
-                  className="t-small"
-                  style={{ color: "var(--brand-band-ink)" }}
-                >
-                  {paragraph}
-                </p>
-              ))}
-            </div>
+            <h2 className="t-overline">{FOOTER.sourceHeading}</h2>
+            <p className="t-small mt-3" style={{ color: "var(--brand-band-ink)" }}>
+              <a
+                className="underline underline-offset-2"
+                href={`https://${SOCRATA_DOMAIN}/`}
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                {FOOTER.sourceLink}
+              </a>
+            </p>
+            <p className="t-caption mt-2 max-w-[40ch]" style={{ color: "var(--brand-band-ink-muted)" }}>
+              {FOOTER.sourceLine}
+            </p>
+            <DataDetailsTrigger
+              className="t-small mt-3 inline-flex min-h-[36px] items-center rounded-[var(--radius-md)] border px-3 underline-offset-2 hover:underline"
+              style={{ borderColor: "var(--brand-band-hairline)", color: "var(--brand-band-ink)" }}
+            >
+              {FOOTER.detailsAction}
+            </DataDetailsTrigger>
           </div>
+        </div>
+
+        <div
+          className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t pt-6"
+          style={{ borderColor: "var(--brand-band-hairline)" }}
+        >
+          <p className="t-small" style={{ color: "var(--brand-band-ink)" }}>
+            {FOOTER.credit}
+          </p>
+          <p className="t-caption" style={{ color: "var(--brand-band-ink-muted)" }}>
+            UNC Charlotte · {new Date().getFullYear()}
+          </p>
         </div>
       </div>
     </footer>

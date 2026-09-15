@@ -2,50 +2,64 @@
 
 ## Animaster PRO (Awwwards Pack)
 
-Three animation components in `src/components/motion/` are adapted from a
-private, paid component pack held locally at `~/Downloads/animmaster-pro1`. The
-pack is licensed for use on sites its owner builds; it is **not** redistributable.
-Per its own terms, only the individual files needed were copied, and each is
-recorded below with its original path.
-
-The pack's `components/` tree contains only README pointers — the real source
-lives in the `_raw/**/code.zip` archives, which is what these were taken from.
+The motion components in `src/components/motion/` and the mobile menu in
+`src/components/shell/` are adapted from a private, paid component pack held
+locally at `~/Downloads/animmaster-pro1`. The pack is licensed for use on sites
+its owner builds; it is **not** redistributable. Per its own terms, only the
+individual files needed were copied, and each is recorded below with its
+original path. The pack's `components/` tree contains only README pointers — the
+real source lives in the `_raw/**/code.zip` archives, which is what these were
+taken from.
 
 | Local file | Behaviour | Original source |
 | --- | --- | --- |
-| `src/components/motion/SplitTextReveal.tsx` | Character-level headline reveal | `_raw/Awwwards Pack-20260628T224220Z-3-001/Awwwards Pack/Text Animations/12/code.zip` → `next-text-reveal-animation/src/components/AnimatedHeader/AnimatedHeader.jsx` |
+| `src/components/motion/SmoothScrollProvider.tsx` | Lenis smooth wheel scrolling driven from the GSAP ticker | `_raw/Awwwards Pack-20260628T224220Z-3-002/Awwwards Pack/Scroll Animation/56/code.zip` → `fall-master/src/components/SmoothScroll/Lenis.jsx` |
+| `src/components/motion/RevealText.tsx` | Masked line reveal for headings (SplitText `mask: "lines"`) | `_raw/Awwwards Pack-20260628T224220Z-3-001/Awwwards Pack/Text Animations/14/code.zip` → `files/script.js` (mask technique); rhythm from the deployed Higgins Building Group `RevealText` |
+| `src/components/shell/MobileMenu.tsx` + `.menu-sheet` in `globals.css` | Circular clip-path reveal from the toggle, numbered links, single reversible transition | `_raw/Awwwards Pack-20260628T224220Z-3-001/Awwwards Pack/Navigation Menus/10/code.zip` → `files/script.js`, `files/style.css` |
 | `src/components/motion/MagneticButton.tsx` | Magnetic pointer-following CTA | `_raw/Awwwards Pack-20260628T224220Z-3-001/Awwwards Pack/Physics Effects/3/code.zip` → `magnetic-button-main/src/components/gsap.jsx` |
-| `src/components/motion/StaggerReveal.tsx` | Scroll-triggered staggered list entrance | `_raw/Awwwards Pack-20260628T224220Z-3-004/Awwwards Pack/Scroll Animation/58/code.zip` → `abstract-cards-main/src/components/AbstractCards.jsx` |
 
 ### What changed on the way in
 
 The originals are demo code. Each was rewritten rather than pasted:
 
-* **Ported to strict TypeScript.** All three shipped as `.jsx` with untyped
-  props and refs.
+* **Ported to strict TypeScript.** All shipped as `.jsx` or plain `.js` with
+  untyped refs and globals.
 * **Reduced motion is honoured in every one.** None of the originals check
-  `prefers-reduced-motion`. `SplitTextReveal` goes further and skips the DOM
-  split entirely, because splitting a heading into per-character spans costs
-  screen readers the sentence even when the result is left visible.
-* **Cleanup was added.** `MagneticButton`'s source attaches two listeners and
-  never removes them, which leaks on every unmount. `SplitTextReveal` now
-  reverts its `SplitText` instance so navigating away does not leave headings
-  permanently shredded into spans.
-* **The scroll scrub was removed from `StaggerReveal`.** The original ties a
-  long timeline to scroll position, which suits a hero collage and actively
-  fights a data table — rows would sit half-transparent while somebody was
-  reading them.
-* **`MagneticButton` only engages for a fine pointer**, and its pull is clamped
-  to 10px so the control stays where it was drawn.
+  `prefers-reduced-motion`. `SmoothScrollProvider` does not create a Lenis
+  instance at all; `RevealText` skips the DOM split; the menu sheet's
+  transition collapses to an instant state change.
+* **Server-rendered content first.** `RevealText` animates a heading that is
+  already in the initial HTML. The hidden start state is scoped to `html.js`
+  and to the pending phase, with a delayed CSS keyframe that uncovers the text
+  if a timeline never attaches. The earlier character-level reveal (Text
+  Animations 12) was retired because it rendered nothing on the server.
+* **One animation loop.** Lenis runs with `autoRaf: false` from the GSAP
+  ticker, forwards scroll to ScrollTrigger, and is destroyed on unmount. Touch
+  stays native; nested scrollers opt out with `data-lenis-prevent`. Settings
+  (1.1s exponential ease-out, wheel ×1, touch ×1.5) are the ones inspected on
+  the deployed Higgins Building Group site.
+* **The ink-blot menu became a dialog.** The original tweened a GSAP proxy
+  into an SVG clip; here a CSS custom property drives one reversible
+  clip-path transition, so a rapid double tap cannot strand the sheet half
+  open. Focus moves in, Tab is contained, Escape closes, the page behind is
+  `inert`, and focus returns to the toggle. Links are interactive from the
+  first frame; the stagger is decoration only.
+* **`MagneticButton` only engages for a fine pointer**, cleans up its
+  listeners, and its pull is clamped to 10px.
 
-### Components deliberately not taken
+### Reviewed and not adopted
 
-The pack has no animated number, count-up or odometer component; the full
-436-entry index and the 863-file raw tree were both searched. `src/components/dashboard/CountUp.tsx`
-is the project's own, and already handles reduced motion and replay suppression.
-
-Nothing from the pack's `shaders/`, `3D / WebGL` or physics categories is used.
-They carry a high performance cost on mobile and none of them earn it here.
+* **Page Transitions 12 and 14** (block reveal, SVG wipe) both depend on
+  `next-transition-router` and delay navigation to play an exit. The product
+  uses a 220ms Framer Motion entrance (`src/components/shell/PageTransition.tsx`)
+  with no exit phase, so modified clicks, downloads and hash links behave
+  exactly as the browser would.
+* **Scroll Animation 58** (the previous `StaggerReveal`) was retired; section
+  entrances now use Framer's `whileInView` in `RevealSection.tsx`, which
+  server-renders its children.
+* The pack has no line-divider or count-up component. `AnimatedDivider.tsx`
+  and `CountUp.tsx` are the project's own.
+* Nothing from `shaders/`, `3D / WebGL` or physics categories is used.
 
 ## Fonts
 
@@ -56,5 +70,11 @@ They carry a high performance cost on mobile and none of them earn it here.
 
 * **City of Austin Open Data Portal** — the four Austin Animal Center intake and
   outcome datasets, published as public domain. Dataset IDs, roles and refresh
-  cadence are listed in `src/lib/austin/datasets.ts` and shown in the footer and
-  the data-details drawer.
+  cadence are listed in `src/lib/austin/datasets.ts` and shown in the
+  data-details drawer and on How it works.
+
+## Licence
+
+The SecondChance source code is released under the MIT License (see the
+repository's `LICENSE`). That licence does not extend to the Animaster
+components' original sources, which remain the pack owner's.

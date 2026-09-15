@@ -3,23 +3,36 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Menu, Moon, Sun, X } from "lucide-react";
-import { NAV, SHELL, STATUS } from "@/lib/content";
+import { ChevronDown, Moon, Sun } from "lucide-react";
+import { NAV, SHELL } from "@/lib/content";
 import { DUR, EASE_OUT } from "@/lib/motion";
 import FreshnessChip from "@/components/shell/FreshnessChip";
 import DataDetails, { type DataQualityRow } from "@/components/shell/DataDetails";
+import MobileMenu from "@/components/shell/MobileMenu";
 import { usePreferences } from "@/components/shell/Preferences";
+import { useDataDetails } from "@/components/shell/Providers";
 import type { DataStatus } from "@/lib/austin/status";
 import type { MetricDefinition } from "@/lib/austin/metrics";
 
-/** The lockup is the logo itself, not a redrawing of it: the mark from
- *  `logo.png`, and the wordmark set two-tone the way the file sets it —
- *  "Second" in the ink, "Chance" in the brand teal. The two <Image> tags are a
- *  light and a dark cut of the same mark; CSS in globals.css shows exactly one,
- *  driven by the same `data-theme` the bootstrap script sets before paint, so
- *  neither the wrong cut nor a flash of both ever reaches the screen. */
+/**
+ * The header.
+ *
+ * Layout: logo left, navigation centre where it fits, one status control and
+ * the theme switch right. The breakpoints follow the content: the four work
+ * links and a "Learn" disclosure need about 1024px beside the logo and the
+ * controls, so below `lg` the navigation lives in the mobile sheet, which
+ * lists all seven destinations. Nothing is rendered twice: the sheet is the
+ * only navigation below `lg`, and the chip in the header is the only status
+ * control above it.
+ *
+ * The model version no longer occupies the main row. It is in the data
+ * drawer and on How it works, where a version string has context.
+ */
+
+/** The lockup is the logo itself: the mark from `logo.png`, and the wordmark
+ *  set two-tone the way the file sets it. Two cuts of the mark, one shown. */
 function Wordmark() {
   const label = SHELL.wordmark;
   const split = label.indexOf("Chance");
@@ -28,8 +41,8 @@ function Wordmark() {
   return (
     <Link
       href="/"
-      aria-label={label}
-      className="t-subtitle inline-flex shrink-0 items-center gap-2 font-semibold"
+      aria-label={`${label} home`}
+      className="t-subtitle inline-flex h-11 shrink-0 items-center gap-2 rounded-[var(--radius-sm)] pr-1 font-semibold"
     >
       <Image
         src="/logo-mark.png"
@@ -37,7 +50,7 @@ function Wordmark() {
         width={218}
         height={214}
         priority
-        className="brand-mark-light h-6 w-6 object-contain sm:h-7 sm:w-7"
+        className="brand-mark-light h-8 w-8 object-contain"
       />
       <Image
         src="/logo-mark-dark.png"
@@ -45,7 +58,7 @@ function Wordmark() {
         width={218}
         height={214}
         priority
-        className="brand-mark-dark h-6 w-6 object-contain sm:h-7 sm:w-7"
+        className="brand-mark-dark h-8 w-8 object-contain"
       />
       <span aria-hidden="true">
         <span style={{ color: "var(--ink-primary)" }}>{first}</span>
@@ -55,87 +68,126 @@ function Wordmark() {
   );
 }
 
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
-  const pathname = usePathname();
-  return (
-    <>
-      {NAV.map((item) => {
-        const active =
-          item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={onNavigate}
-            aria-current={active ? "page" : undefined}
-            className="t-small relative rounded-[var(--radius-sm)] px-2 py-3"
-            style={{ color: active ? "var(--ink-primary)" : "var(--ink-secondary)" }}
-          >
-            {item.label}
-            {active ? (
-              <motion.span
-                layoutId="nav-underline"
-                className="absolute inset-x-1 -bottom-px block h-0.5"
-                style={{ background: "var(--accent)" }}
-                transition={{ duration: DUR.base, ease: EASE_OUT }}
-              />
-            ) : null}
-          </Link>
-        );
-      })}
-    </>
-  );
+function isActive(href: string, pathname: string): boolean {
+  return href === "/" ? pathname === "/" : pathname.startsWith(href);
 }
 
-function IconButton({
-  label,
-  onClick,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      title={label}
-      className="inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] border sm:h-9 sm:w-9"
-      style={{
-        borderColor: "var(--border-hairline)",
-        background: "var(--surface-card)",
-        color: "var(--ink-secondary)",
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-/** The model chip states plainly whether anything is scoring. When no model is
- *  live it says so rather than showing a version string that implies one is. */
-function ModelChip({ status }: { status: DataStatus }) {
-  const scoring = status.scoringStatus === "live";
-  const label = scoring
-    ? `${SHELL.modelChipPrefix} ${status.modelVersion}`
-    : status.scoringStatus === "in_progress"
-      ? STATUS.scoringInProgress
-      : STATUS.scoringUnavailable;
-
+function NavLink({ href, label, active }: { href: string; label: string; active: boolean }) {
   return (
     <Link
-      href="/model"
-      className="t-caption rounded-[var(--radius-sm)] px-2 py-1 font-mono"
-      style={{
-        background: "var(--surface-sunken)",
-        color: scoring ? "var(--ink-secondary)" : "var(--status-warning)",
-      }}
-      title={status.scoringNote ?? undefined}
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className="t-small relative inline-flex h-11 items-center rounded-[var(--radius-sm)] px-2.5 font-medium transition-colors"
+      style={{ color: active ? "var(--ink-primary)" : "var(--ink-secondary)" }}
     >
       {label}
+      {active ? (
+        <motion.span
+          layoutId="nav-underline"
+          className="absolute inset-x-2.5 bottom-1 block h-0.5 rounded-full"
+          style={{ background: "var(--accent)" }}
+          transition={{ duration: DUR.base, ease: EASE_OUT }}
+        />
+      ) : null}
     </Link>
+  );
+}
+
+/** "Learn" holds Impact, How it works and About. A real disclosure: button
+ *  with aria-expanded and aria-controls, Escape closes, focus stays sane. */
+function LearnMenu({ pathname }: { pathname: string }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const items = NAV.filter((item) => item.group === "learn");
+  const groupActive = items.some((item) => isActive(item.href, pathname));
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        (rootRef.current?.querySelector("button") as HTMLElement | null)?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls="learn-menu"
+        aria-haspopup="true"
+        onClick={() => setOpen((value) => !value)}
+        className="t-small relative inline-flex h-11 items-center gap-1 rounded-[var(--radius-sm)] px-2.5 font-medium"
+        style={{ color: groupActive ? "var(--ink-primary)" : "var(--ink-secondary)" }}
+      >
+        {SHELL.learnGroup}
+        <ChevronDown
+          size={15}
+          strokeWidth={1.75}
+          aria-hidden="true"
+          style={{ transform: open ? "rotate(180deg)" : undefined, transition: "transform 160ms" }}
+        />
+        {groupActive ? (
+          <motion.span
+            layoutId="nav-underline"
+            className="absolute inset-x-2.5 bottom-1 block h-0.5 rounded-full"
+            style={{ background: "var(--accent)" }}
+            transition={{ duration: DUR.base, ease: EASE_OUT }}
+          />
+        ) : null}
+      </button>
+      <motion.ul
+        id="learn-menu"
+        role="list"
+        initial={false}
+        animate={open ? { opacity: 1, y: 0 } : { opacity: 0, y: -4 }}
+        transition={{ duration: DUR.fast, ease: EASE_OUT }}
+        className="absolute left-0 top-full z-50 mt-1 w-72 border p-1.5"
+        style={{
+          background: "var(--surface-raised)",
+          borderColor: "var(--border-hairline)",
+          borderRadius: "var(--radius-lg)",
+          boxShadow: "var(--elev-3)",
+          pointerEvents: open ? "auto" : "none",
+          visibility: open ? "visible" : "hidden",
+        }}
+      >
+        {items.map((item) => {
+          const active = isActive(item.href, pathname);
+          return (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className="block rounded-[var(--radius-md)] px-3 py-2.5 hover:bg-[var(--surface-sunken)]"
+              >
+                <span className="t-small block font-medium" style={{ color: "var(--ink-primary)" }}>
+                  {item.label}
+                </span>
+                <span className="t-caption block" style={{ color: "var(--ink-muted)" }}>
+                  {item.description}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </motion.ul>
+    </div>
   );
 }
 
@@ -151,91 +203,107 @@ export function Header({
   unscored: { reason: string; count: number }[];
 }) {
   const { theme, setTheme } = usePreferences();
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  const { open: detailsOpen, openDetails, closeDetails } = useDataDetails();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement>(null);
   const pathname = usePathname();
 
   useEffect(() => {
-    setDrawerOpen(false);
-    setDetailsOpen(false);
-  }, [pathname]);
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
-  const openDetails = () => setDetailsOpen(true);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const work = NAV.filter((item) => item.group === "work");
 
   return (
-    <header
-      className="sticky top-0 z-40 border-b"
-      style={{
-        background: "var(--surface-card)",
-        borderColor: "var(--border-hairline)",
-      }}
-    >
-      <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-2 px-4 sm:gap-4 sm:px-6 lg:px-10">
-        <div className="sm:hidden">
-          <IconButton
-            label={drawerOpen ? "Close navigation" : "Open navigation"}
-            onClick={() => setDrawerOpen((open) => !open)}
-          >
-            {drawerOpen ? <X size={20} strokeWidth={1.5} /> : <Menu size={20} strokeWidth={1.5} />}
-          </IconButton>
-        </div>
-        <Wordmark />
-
-        <nav aria-label="Primary" className="hidden items-center gap-1 sm:flex">
-          <NavLinks />
-        </nav>
-
-        <div className="flex-1" />
-
-        <div className="hidden items-center gap-2 lg:flex">
-          <FreshnessChip
-            mode={status.mode}
-            updatedAt={status.intakesUpdatedAt ?? status.retrievedAt}
-            problem={status.problem}
-            onOpenDetails={openDetails}
-          />
-          <ModelChip status={status} />
-        </div>
-
-        <IconButton
-          label={`Theme: ${theme === "dark" ? SHELL.themeDark : SHELL.themeLight}`}
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-        >
-          {theme === "dark" ? (
-            <Moon size={20} strokeWidth={1.5} />
-          ) : (
-            <Sun size={20} strokeWidth={1.5} />
-          )}
-        </IconButton>
-      </div>
-
-      {/* The stamps stay visible at every width; on small screens they move to
-          their own row rather than hiding behind the drawer. */}
-      <div
-        className="flex flex-wrap items-center gap-2 border-t px-4 py-2 sm:px-6 lg:hidden"
-        style={{ borderColor: "var(--border-hairline)" }}
+    <>
+      <header
+        className="site-header sticky top-0 z-40 border-b"
+        data-scrolled={scrolled}
+        style={{
+          background: scrolled ? "color-mix(in srgb, var(--surface-card) 92%, transparent)" : "var(--surface-card)",
+          backdropFilter: scrolled ? "blur(8px)" : undefined,
+          borderColor: scrolled ? "var(--border-hairline)" : "transparent",
+        }}
       >
-        <FreshnessChip
-          mode={status.mode}
-          updatedAt={status.intakesUpdatedAt ?? status.retrievedAt}
-          problem={status.problem}
-          onOpenDetails={openDetails}
-        />
-        <ModelChip status={status} />
-      </div>
+        <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-3 px-4 sm:px-6 lg:px-10">
+          <Wordmark />
 
-      {drawerOpen ? (
-        <motion.nav
-          aria-label="Primary"
-          initial={{ opacity: 0, x: -8 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: DUR.base, ease: EASE_OUT }}
-          className="flex flex-col border-t px-6 py-2 sm:hidden"
-          style={{ background: "var(--surface-card)", borderColor: "var(--border-hairline)" }}
-        >
-          <NavLinks onNavigate={() => setDrawerOpen(false)} />
-        </motion.nav>
-      ) : null}
+          <nav aria-label="Primary" className="ml-4 hidden items-center gap-0.5 lg:flex">
+            {work.map((item) => (
+              <NavLink
+                key={item.href}
+                href={item.href}
+                label={item.label}
+                active={isActive(item.href, pathname)}
+              />
+            ))}
+            <LearnMenu pathname={pathname} />
+          </nav>
+
+          <div className="flex-1" />
+
+          {/* One status control per viewport: compact below md, full above. */}
+          <div className="hidden md:block">
+            <FreshnessChip status={status} onOpenDetails={openDetails} />
+          </div>
+          <div className="md:hidden">
+            <FreshnessChip status={status} onOpenDetails={openDetails} compact />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            aria-label={`Switch to ${theme === "dark" ? SHELL.themeLight : SHELL.themeDark} theme`}
+            title={`Theme: ${theme === "dark" ? SHELL.themeDark : SHELL.themeLight}`}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] border"
+            style={{
+              borderColor: "var(--border-hairline)",
+              background: "var(--surface-card)",
+              color: "var(--ink-secondary)",
+            }}
+          >
+            {theme === "dark" ? (
+              <Moon size={20} strokeWidth={1.5} aria-hidden="true" />
+            ) : (
+              <Sun size={20} strokeWidth={1.5} aria-hidden="true" />
+            )}
+          </button>
+
+          <button
+            ref={toggleRef}
+            type="button"
+            onClick={() => setMenuOpen((value) => !value)}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-menu"
+            aria-label={menuOpen ? SHELL.closeMenu : SHELL.openMenu}
+            className="burger rounded-[var(--radius-md)] border lg:hidden"
+            style={{
+              borderColor: "var(--border-hairline)",
+              background: "var(--surface-card)",
+              color: "var(--ink-primary)",
+            }}
+          >
+            <span className="burger__line" aria-hidden="true" />
+            <span className="burger__line" aria-hidden="true" />
+          </button>
+        </div>
+      </header>
+
+      <MobileMenu
+        open={menuOpen}
+        onClose={closeMenu}
+        toggleRef={toggleRef}
+        status={status}
+        onOpenDetails={() => {
+          closeMenu();
+          openDetails();
+        }}
+      />
 
       {detailsOpen ? (
         <DataDetails
@@ -243,10 +311,10 @@ export function Header({
           definitions={definitions}
           quality={quality}
           unscored={unscored}
-          onClose={() => setDetailsOpen(false)}
+          onClose={closeDetails}
         />
       ) : null}
-    </header>
+    </>
   );
 }
 

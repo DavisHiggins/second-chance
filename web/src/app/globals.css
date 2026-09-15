@@ -257,18 +257,11 @@
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
 
-  --spacing-1: var(--space-1);
-  --spacing-2: var(--space-2);
-  --spacing-3: var(--space-3);
-  --spacing-4: var(--space-4);
-  --spacing-5: var(--space-5);
-  --spacing-6: var(--space-6);
-  --spacing-7: var(--space-7);
-  --spacing-8: var(--space-8);
-  --spacing-9: var(--space-9);
-  --spacing-10: var(--space-10);
-  --spacing-11: var(--space-11);
-  --spacing-12: var(--space-12);
+  /* Spacing utilities are deliberately NOT remapped onto the --space-* scale.
+     An earlier version bound --spacing-11 to 96px, so `h-11` (a 44px touch
+     target in every other Tailwind project) rendered at 96px. Utilities keep
+     Tailwind's 4px scale; the design-system scale is used by name
+     (var(--space-5)) where a component wants it. */
 
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
@@ -297,9 +290,26 @@ body {
   background: var(--surface-page);
   color: var(--ink-primary);
   font-family: var(--font-sans);
-  font-size: 15px;
-  line-height: 1.55;
+  font-size: 16px;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+/* Lenis needs the document to own the scroll; nested scrollers opt out with
+   data-lenis-prevent, which tables and drawers set. */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
 }
 
 :focus-visible {
@@ -308,19 +318,24 @@ body {
   border-radius: var(--radius-sm);
 }
 
-/* Type scale. Roles, not sizes: never set a font-size in a component. */
+/* Type scale. Roles, not sizes: never set a font-size in a component.
+   Two H1 roles exist on purpose: story pages (dashboard hero, Impact, About)
+   take the larger, fluid one; operational pages keep the compact one so the
+   first row of data stays within reach. */
 .t-hero {
-  font-size: 44px;
+  font-size: clamp(36px, 2.2rem + 1.7vw, 64px);
   line-height: 1.04;
   font-weight: 600;
-  letter-spacing: -0.022em;
+  letter-spacing: -0.024em;
   font-variant-numeric: tabular-nums;
+  text-wrap: balance;
 }
 .t-display {
-  font-size: 32px;
-  line-height: 1.12;
+  font-size: clamp(30px, 1.55rem + 1vw, 44px);
+  line-height: 1.1;
   font-weight: 600;
-  letter-spacing: -0.018em;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 .t-title {
   font-size: 22px;
@@ -335,23 +350,28 @@ body {
   letter-spacing: -0.006em;
 }
 .t-body {
-  font-size: 15px;
+  font-size: 16px;
+  line-height: 1.6;
+  font-weight: 400;
+}
+.t-lede {
+  font-size: 18px;
   line-height: 1.55;
   font-weight: 400;
 }
 .t-small {
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: 14px;
+  line-height: 1.5;
   font-weight: 400;
 }
 .t-caption {
-  font-size: 11.5px;
-  line-height: 1.35;
+  font-size: 12.5px;
+  line-height: 1.4;
   font-weight: 500;
-  letter-spacing: 0.012em;
+  letter-spacing: 0.01em;
 }
 .t-overline {
-  font-size: 11px;
+  font-size: 11.5px;
   line-height: 1.2;
   font-weight: 600;
   letter-spacing: 0.09em;
@@ -540,22 +560,358 @@ body {
     var(--surface-sunken);
 }
 
-/* Reveal primitive shared by the Animaster-derived components. The transform
-   is set inline by GSAP; this only establishes the starting state so nothing
-   flashes before the timeline attaches. Under reduced motion the element is
-   simply visible from the start. */
-.reveal-init {
+/* --------------------------------------------------------------------------- */
+/* Motion primitives                                                           */
+/* --------------------------------------------------------------------------- */
+
+/* Masked line reveal. The heading is server-rendered as plain text; the
+   client splits it into lines and rises each one inside its own mask. The
+   hidden starting state exists only while the component reports "pending"
+   and only once JavaScript has marked the document (`html.js`), so a reader
+   without script, or with motion initialisation failing, sees the heading
+   immediately. The delayed keyframe is a belt for the braces: if a timeline
+   never attaches, the text is uncovered after two seconds regardless. */
+html.js .reveal-text[data-reveal="pending"] .split-line {
   opacity: 0;
-  will-change: transform, opacity;
+  animation: sc-uncover 0.01s linear 2.2s forwards;
+}
+/* A scroll-triggered heading may legitimately wait longer; its safety net is
+   looser so it cannot pop before the trigger fires. */
+html.js .reveal-text[data-reveal="pending"][data-scroll="true"] .split-line {
+  animation-delay: 8s;
+}
+.reveal-text .split-line {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
+}
+@keyframes sc-uncover {
+  to {
+    opacity: 1;
+  }
+}
+
+/* Section divider: a real hairline that survives motion failure, with a
+   short teal segment drawn over it on entry. */
+.divider {
+  position: relative;
+  border-top: 1px solid var(--border-hairline);
+}
+.divider__accent {
+  position: absolute;
+  left: 0;
+  top: -1px;
+  height: 2px;
+  width: 72px;
+  background: var(--accent);
+  transform-origin: left center;
+}
+
+/* Header scroll state. */
+.site-header {
+  transition:
+    background-color var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+}
+.site-header[data-scrolled="true"] {
+  box-shadow: var(--elev-1);
+}
+
+/* Two-line hamburger that becomes an X. The lines are children of one
+   button so it stays a single focusable element with one label. */
+.burger {
+  position: relative;
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+}
+.burger__line {
+  position: absolute;
+  left: 12px;
+  width: 20px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+.burger__line:nth-child(1) {
+  transform: translateY(-4px);
+}
+.burger__line:nth-child(2) {
+  transform: translateY(4px);
+}
+.burger[aria-expanded="true"] .burger__line:nth-child(1) {
+  transform: rotate(45deg);
+}
+.burger[aria-expanded="true"] .burger__line:nth-child(2) {
+  transform: rotate(-45deg);
+}
+
+/* Mobile menu sheet. The circular clip-path is adapted from the Animaster
+   ink-blot reveal (see ATTRIBUTION.md), driven by a CSS custom property so
+   opening and closing are the same transition run in either direction and a
+   rapid toggle cannot strand the sheet half-open. */
+.menu-sheet {
+  clip-path: circle(var(--menu-r, 0px) at var(--menu-x, calc(100% - 34px)) var(--menu-y, 32px));
+  transition: clip-path 0.55s var(--ease-in-out);
+}
+.menu-sheet[data-open="true"] {
+  --menu-r: 150vmax;
+}
+.menu-sheet__item {
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.35s var(--ease-out),
+    transform 0.35s var(--ease-out);
+}
+.menu-sheet[data-open="true"] .menu-sheet__item {
+  opacity: 1;
+  transform: none;
+}
+
+/* Buttons. One set of variants for the whole product. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn[aria-disabled="true"],
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+.btn .btn__arrow {
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.btn:hover .btn__arrow,
+.btn:focus-visible .btn__arrow {
+  transform: translateX(3px);
+}
+.btn--sm {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+.btn--primary {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+.btn--primary:hover {
+  background: var(--accent-strong);
+}
+.btn--secondary {
+  background: var(--surface-card);
+  border-color: var(--border-hairline);
+  color: var(--ink-primary);
+}
+.btn--secondary:hover {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+.btn--ghost {
+  background: transparent;
+  color: var(--ink-secondary);
+}
+.btn--ghost:hover {
+  background: var(--surface-sunken);
+  color: var(--ink-primary);
+}
+.btn--band {
+  background: var(--brand-band-accent);
+  color: #04212c;
+}
+.btn--band:hover {
+  background: #7de6cf;
+}
+.btn--band-outline {
+  background: transparent;
+  border-color: rgba(232, 240, 239, 0.32);
+  color: var(--brand-band-ink);
+}
+.btn--band-outline:hover {
+  border-color: var(--brand-band-accent);
+  color: var(--brand-band-accent);
+}
+.btn--success {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+/* Text links with an underline that draws in from the left. */
+.link-reveal {
+  position: relative;
+  color: var(--accent-strong);
+  text-decoration: none;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size var(--dur-base) var(--ease-out);
+}
+.link-reveal:hover,
+.link-reveal:focus-visible {
+  background-size: 100% 1px;
+}
+
+/* Interactive cards lift by at most 2px; static cards never move. */
+.card-interactive {
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+.card-interactive:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: var(--elev-2);
+}
+
+/* Table rows: hover and focus-within, no movement. */
+.row-hover:hover,
+.row-hover:focus-within {
+  background: var(--surface-sunken);
+}
+
+/* Form controls, one look. */
+.field {
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-hairline);
+  background: var(--surface-page);
+  color: var(--ink-primary);
+  font-size: 14px;
+}
+.field::placeholder {
+  color: var(--ink-muted);
+}
+.field:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-color: var(--accent);
+}
+.field-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-secondary);
+}
+
+/* Filter chips. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 6px 0 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-hairline);
+  background: var(--surface-card);
+  color: var(--ink-secondary);
+  font-size: 13px;
+}
+.chip button {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  color: var(--ink-muted);
+}
+.chip button:hover {
+  background: var(--surface-sunken);
+  color: var(--ink-primary);
+}
+
+/* Disclosure summary. */
+details.disclosure > summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 500;
+  min-height: 32px;
+}
+details.disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+details.disclosure > summary .disclosure__chevron {
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+details.disclosure[open] > summary .disclosure__chevron {
+  transform: rotate(180deg);
+}
+
+/* Slow drift of the hero contour field, story sections only. Runs only
+   while the section is in view (the section sets data-inview) and never on
+   small screens or under reduced motion. */
+@media (min-width: 768px) {
+  .hero-surface[data-drift="true"]::before {
+    animation: sc-drift 40s linear infinite;
+    animation-play-state: paused;
+  }
+  .hero-surface[data-drift="true"][data-inview="true"]::before {
+    animation-play-state: running;
+  }
+}
+@keyframes sc-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(-2%, 1.5%, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .reveal-init {
+  html.js .reveal-text[data-reveal="pending"] .split-line,
+  .menu-sheet__item {
     opacity: 1 !important;
     transform: none !important;
+    animation: none !important;
+  }
+  .menu-sheet {
+    transition: none;
   }
   .hero-surface::before {
     display: none;
+  }
+  .divider__accent {
+    transform: none !important;
   }
 }
 
@@ -567,10 +923,48 @@ body {
     color: #000000 !important;
   }
 
-  .no-print {
+  .no-print,
+  .site-header,
+  .site-footer,
+  .menu-sheet {
     display: none !important;
   }
   body {
     background: #ffffff;
+    color: #000000;
+    font-size: 12px;
   }
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
+  table {
+    page-break-inside: auto;
+  }
+  tr {
+    page-break-inside: avoid;
+  }
+  a {
+    color: #000000;
+    text-decoration: none;
+  }
+  .print-only {
+    display: block !important;
+  }
+}
+
+.print-only {
+  display: none;
 }

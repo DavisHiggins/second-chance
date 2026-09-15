@@ -4,20 +4,25 @@ import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { motion } from "framer-motion";
 import { SHELL } from "@/lib/content";
-import { formatDateTime, formatNumber } from "@/lib/format";
+import { formatInstant, formatNumber, formatRelativeAge, formatSourceTime } from "@/lib/format";
 import { DUR, EASE_OUT } from "@/lib/motion";
+import { allMetrics, QUALITY_LABELS } from "@/lib/metrics/registry";
+import { useSmoothScroll } from "@/components/motion/SmoothScrollProvider";
 import type { DataStatus } from "@/lib/austin/status";
 import type { MetricDefinition } from "@/lib/austin/metrics";
+import Disclosure from "@/components/ui/Disclosure";
 
 /**
- * The data-details drawer: where every number on the site is defined.
+ * The data-details drawer: where every number on the site is defined and
+ * every clock is named.
  *
- * The handoff asks for a data dictionary the user can actually reach, and the
- * reason is the one this whole rebuild is about. A figure without its
- * definition invites the reader to assume the most flattering reading, and
- * "animals in care" is exactly the kind of phrase that quietly becomes
- * "animals you can adopt today" in someone's head. Every definition here also
- * says what it excludes, because that is usually the load-bearing half.
+ * A figure without its definition invites the reader to assume the most
+ * flattering reading, and "animals in care" is exactly the kind of phrase
+ * that quietly becomes "animals you can adopt today" in someone's head.
+ * Every definition here also says what it excludes, because that is usually
+ * the load-bearing half. The freshness section separates the publisher's
+ * write time, the newest row stamp, the newest event, this site's retrieval
+ * and the snapshot moment, because a fresh request is not a fresh dataset.
  */
 
 export interface DataQualityRow {
@@ -41,10 +46,20 @@ export function DataDetails({
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const scroll = useSmoothScroll();
 
   // Focus moves into the drawer on open and Escape closes it, so a keyboard
-  // user is never stranded behind an overlay they cannot dismiss.
+  // user is never stranded behind an overlay they cannot dismiss. The page
+  // behind is inert and stops scrolling while the drawer is open.
   useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const main = document.getElementById("main");
+    const footer = document.getElementById("site-footer");
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    scroll.stop();
+    main?.setAttribute("inert", "");
+    footer?.setAttribute("inert", "");
     closeRef.current?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -52,7 +67,7 @@ export function DataDetails({
       if (event.key !== "Tab") return;
 
       const focusable = panelRef.current?.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        'a[href], button:not([disabled]), summary, [tabindex]:not([tabindex="-1"])',
       );
       if (!focusable || focusable.length === 0) return;
 
@@ -69,11 +84,19 @@ export function DataDetails({
     };
 
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      scroll.start();
+      main?.removeAttribute("inert");
+      footer?.removeAttribute("inert");
+      previouslyFocused?.focus();
+    };
+  }, [onClose, scroll]);
 
   const current = status.sources.filter((source) => source.role === "current");
   const archive = status.sources.filter((source) => source.role === "archive");
+  const glossary = allMetrics();
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -96,9 +119,10 @@ export function DataDetails({
         transition={{ duration: DUR.base, ease: EASE_OUT }}
         className="relative flex h-full w-full max-w-[34rem] flex-col overflow-y-auto"
         style={{ background: "var(--surface-card)", borderLeft: "1px solid var(--border-hairline)" }}
+        data-lenis-prevent=""
       >
         <div
-          className="sticky top-0 flex items-center justify-between border-b px-5 py-4"
+          className="sticky top-0 z-10 flex items-center justify-between border-b px-5 py-3"
           style={{ background: "var(--surface-card)", borderColor: "var(--border-hairline)" }}
         >
           <h2 className="t-subtitle" style={{ color: "var(--ink-primary)" }}>
@@ -109,7 +133,7 @@ export function DataDetails({
             type="button"
             onClick={onClose}
             aria-label={SHELL.dataDetailsClose}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] border"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] border"
             style={{ borderColor: "var(--border-hairline)", color: "var(--ink-secondary)" }}
           >
             <X size={18} strokeWidth={1.5} aria-hidden="true" />
@@ -134,10 +158,29 @@ export function DataDetails({
             <h3 className="t-overline" style={{ color: "var(--ink-muted)" }}>
               Freshness
             </h3>
+            <p className="t-caption mt-1" style={{ color: "var(--ink-muted)" }}>
+              {`All times on Austin's clock (${status.sourceTimeZone}). A new request does not make the data newer; the publisher's time is the one that counts.`}
+            </p>
             <dl className="mt-3 space-y-2">
-              <Row label="Intakes last published" value={fmt(status.intakesUpdatedAt)} />
-              <Row label="Outcomes last published" value={fmt(status.outcomesUpdatedAt)} />
-              <Row label="Retrieved by this site" value={fmt(status.retrievedAt)} />
+              <Row
+                label="Publisher last updated"
+                value={
+                  status.publisherUpdatedAt
+                    ? `${formatInstant(status.publisherUpdatedAt)} (${formatRelativeAge(
+                        status.publisherAgeHours,
+                      )})`
+                    : "not reported by the portal"
+                }
+              />
+              <Row label="Newest intake row stamp" value={formatSourceTime(status.intakesUpdatedAt)} />
+              <Row label="Newest outcome row stamp" value={formatSourceTime(status.outcomesUpdatedAt)} />
+              <Row label="Newest animal event" value={formatSourceTime(status.latestEventAt)} />
+              <Row label="Retrieved by this site" value={formatInstant(status.retrievedAt)} />
+              <Row label="Snapshot computed" value={formatInstant(status.snapshotAt)} />
+              <Row
+                label="Snapshot reused for"
+                value={`up to ${Math.round(status.cacheIntervalSeconds / 60)} minutes`}
+              />
             </dl>
           </section>
 
@@ -162,7 +205,8 @@ export function DataDetails({
             </h3>
             <p className="t-caption mt-1" style={{ color: "var(--ink-muted)" }}>
               Frozen at the 5 May 2025 ShelterBuddy cutover. Different schema, and a different
-              animal ID format, so these cannot be joined to the current feeds.
+              animal ID format, so these cannot be joined to the current feeds. Used only by the
+              earlier archive study.
             </p>
             <ul className="mt-3 space-y-3">
               {archive.map((source) => (
@@ -228,6 +272,16 @@ export function DataDetails({
                 ))}
               </tbody>
             </table>
+            <div className="mt-3 space-y-2">
+              {Object.values(QUALITY_LABELS).map((label) => (
+                <p key={label.title} className="t-caption" style={{ color: "var(--ink-muted)" }}>
+                  <span className="font-semibold" style={{ color: "var(--ink-secondary)" }}>
+                    {label.title}.
+                  </span>{" "}
+                  {label.body}
+                </p>
+              ))}
+            </div>
           </section>
 
           {unscored.length > 0 ? (
@@ -254,23 +308,55 @@ export function DataDetails({
             </h3>
             <dl className="mt-3 space-y-2">
               <Row label="Version" value={status.modelVersion ?? "not published"} mono />
-              <Row label="Trained at" value={fmt(status.modelTrainedAt)} />
+              <Row label="Trained at" value={formatInstant(status.modelTrainedAt)} />
               <Row label="Scoring" value={status.scoringStatus} />
             </dl>
-            {status.scoringNote ? (
-              <p className="t-caption mt-2" style={{ color: "var(--ink-muted)" }}>
-                {status.scoringNote}
-              </p>
-            ) : null}
+            <p className="t-caption mt-2" style={{ color: "var(--ink-muted)" }}>
+              {status.scoringNote ??
+                "Updated records receive estimates from this model. The model itself changes only after retraining and evaluation."}
+            </p>
+          </section>
+
+          <section>
+            <h3 className="t-overline" style={{ color: "var(--ink-muted)" }}>
+              Metric guide
+            </h3>
+            <div className="mt-3 space-y-1">
+              {glossary.map((entry) => (
+                <Disclosure key={entry.id} summary={entry.title} compact>
+                  <p className="t-small" style={{ color: "var(--ink-secondary)" }}>
+                    {entry.meaning}
+                  </p>
+                  <dl className="t-caption mt-2 space-y-1" style={{ color: "var(--ink-muted)" }}>
+                    <div>
+                      <dt className="inline font-semibold">Unit: </dt>
+                      <dd className="inline">{entry.unit}</dd>
+                    </div>
+                    <div>
+                      <dt className="inline font-semibold">How: </dt>
+                      <dd className="inline">{entry.formula}</dd>
+                    </div>
+                    <div>
+                      <dt className="inline font-semibold">Window: </dt>
+                      <dd className="inline">{entry.window}</dd>
+                    </div>
+                    <div>
+                      <dt className="inline font-semibold">Sample: </dt>
+                      <dd className="inline">{entry.sample}</dd>
+                    </div>
+                    <div>
+                      <dt className="inline font-semibold">Limit: </dt>
+                      <dd className="inline">{entry.limitation}</dd>
+                    </div>
+                  </dl>
+                </Disclosure>
+              ))}
+            </div>
           </section>
         </div>
       </motion.div>
     </div>
   );
-}
-
-function fmt(iso: string | null): string {
-  return iso ? formatDateTime(iso) : "not reported";
 }
 
 function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
@@ -295,12 +381,14 @@ function SourceRow({
   href,
   rowsRetrieved,
   latestSourceTimestamp,
+  publisherUpdatedAt,
 }: {
   id: string;
   label: string;
   href: string;
   rowsRetrieved: number | null;
   latestSourceTimestamp: string | null;
+  publisherUpdatedAt: string | null;
 }) {
   return (
     <li>
@@ -316,7 +404,8 @@ function SourceRow({
       <p className="t-caption" style={{ color: "var(--ink-muted)" }}>
         <span className="font-mono">{id}</span>
         {rowsRetrieved !== null ? ` · ${formatNumber(rowsRetrieved)} rows retrieved` : ""}
-        {latestSourceTimestamp ? ` · newest row ${formatDateTime(latestSourceTimestamp)}` : ""}
+        {publisherUpdatedAt ? ` · publisher wrote ${formatInstant(publisherUpdatedAt)}` : ""}
+        {latestSourceTimestamp ? ` · newest row ${formatSourceTime(latestSourceTimestamp)}` : ""}
       </p>
     </li>
   );

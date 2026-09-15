@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatDateTime } from "@/lib/format";
+import { formatInstant, formatRelativeAge } from "@/lib/format";
 import { STATUS } from "@/lib/content";
+import { toUtcMs } from "@/lib/austin/time";
+import { dataAsOf, type DataMode, type DataStatus } from "@/lib/austin/status";
 import { StatusIcon, type StatusTone } from "@/components/ui/Status";
-import type { DataMode } from "@/lib/austin/status";
 
 /**
  * The data-status chip.
@@ -15,6 +16,12 @@ import type { DataMode } from "@/lib/austin/status";
  * mode below has no value that lets stale or synthetic data wear the live
  * label, and the chip is the one element in the product that pulses: it is
  * reserved for the case where the screen might be misleading you.
+ *
+ * The time it shows is the publisher's last write when Austin reported one,
+ * otherwise the newest row stamp, both read on Austin's clock with the zone
+ * named. A new request from this site does not count as a new publication.
+ * The age is computed on the client so it keeps counting after the page was
+ * served; the server-rendered copy carries no time at all.
  */
 
 const TONE_BY_MODE: Record<DataMode, StatusTone> = {
@@ -32,63 +39,84 @@ const LABEL_BY_MODE: Record<DataMode, string> = {
 };
 
 export function FreshnessChip({
-  mode,
-  updatedAt,
-  problem,
+  status,
   onOpenDetails,
+  compact = false,
+  onBand = false,
 }: {
-  mode: DataMode;
-  updatedAt: string | null;
-  problem: string | null;
+  status: DataStatus;
   onOpenDetails?: () => void;
+  /** Icon and short label only, for narrow headers. */
+  compact?: boolean;
+  /** Drawn on the navy band. */
+  onBand?: boolean;
 }) {
-  // The timestamp is formatted on the client so the server render never bakes
-  // in a reading that is already wrong by the time it reaches the browser.
-  const [stamp, setStamp] = useState<string | null>(null);
+  const [stamp, setStamp] = useState<{ time: string; age: string } | null>(null);
 
   useEffect(() => {
-    setStamp(updatedAt ? formatDateTime(updatedAt) : null);
-  }, [updatedAt]);
+    const iso = dataAsOf(status);
+    if (!iso) {
+      setStamp(null);
+      return;
+    }
+    const compute = () => {
+      const ms = toUtcMs(iso);
+      setStamp({
+        time: formatInstant(iso),
+        age: ms === null ? "" : formatRelativeAge((Date.now() - ms) / 3_600_000),
+      });
+    };
+    compute();
+    const timer = window.setInterval(compute, 60_000);
+    return () => window.clearInterval(timer);
+  }, [status]);
 
-  const tone = TONE_BY_MODE[mode];
-  const label = LABEL_BY_MODE[mode];
-  const pulse = mode === "delayed";
+  const tone = TONE_BY_MODE[status.mode];
+  const label = LABEL_BY_MODE[status.mode];
+  const pulse = status.mode === "delayed";
 
-  const suffix =
+  const detail =
     stamp === null
       ? ""
-      : mode === "live"
-        ? ` · updated ${stamp}`
-        : mode === "delayed"
-          ? ` · last update ${stamp}`
-          : mode === "historical_demo"
-            ? ` · data from ${stamp}`
+      : status.mode === "live"
+        ? ` · published ${stamp.age}`
+        : status.mode === "delayed"
+          ? ` · last published ${stamp.age}`
+          : status.mode === "historical_demo"
+            ? ` · data from ${stamp.time}`
             : "";
 
   const content = (
     <>
       <StatusIcon tone={tone} size={14} label={`Data status: ${label}`} />
-      <span>
+      <span className={compact ? "sr-only sm:not-sr-only" : ""}>
         {label}
-        {suffix}
+        {compact ? "" : detail}
       </span>
-      {problem ? <span className="sr-only">{` ${problem}`}</span> : null}
+      {stamp ? <span className="sr-only">{` Published ${stamp.time}.`}</span> : null}
+      {status.problem ? <span className="sr-only">{` ${status.problem}`}</span> : null}
     </>
   );
 
-  const className = `t-caption inline-flex items-center gap-1.5 rounded-[var(--radius-full)] border px-2.5 py-1 ${
+  const className = `t-caption inline-flex min-h-[36px] items-center gap-1.5 rounded-[var(--radius-full)] border px-3 ${
     pulse ? "freshness-pulse" : ""
   }`;
 
-  const style = {
-    background: "var(--surface-sunken)",
-    borderColor: "var(--border-hairline)",
-    color: "var(--ink-secondary)",
-  } as const;
+  const style = onBand
+    ? ({
+        background: "rgba(255,255,255,0.06)",
+        borderColor: "var(--brand-band-hairline)",
+        color: "var(--brand-band-ink)",
+      } as const)
+    : ({
+        background: "var(--surface-sunken)",
+        borderColor: "var(--border-hairline)",
+        color: "var(--ink-secondary)",
+      } as const);
 
   if (!onOpenDetails) {
     return (
-      <span className={className} style={style} title={problem ?? undefined}>
+      <span className={className} style={style} title={status.problem ?? undefined}>
         {content}
       </span>
     );
@@ -100,7 +128,8 @@ export function FreshnessChip({
       onClick={onOpenDetails}
       className={`${className} text-left`}
       style={style}
-      title={problem ?? "Where this data comes from"}
+      title={status.problem ?? "Where this data comes from"}
+      aria-haspopup="dialog"
     >
       {content}
     </button>

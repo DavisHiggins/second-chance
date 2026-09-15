@@ -73,5 +73,7 @@ export function usePreferences(): PreferencesValue {
   return context;
 }
 
-/** Runs before first paint so the theme never flashes. */
-export const PREFERENCES_BOOTSTRAP = `(function(){try{var t=localStorage.getItem("${THEME_KEY}");if(!t){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}document.documentElement.setAttribute("data-theme",t);var d=localStorage.getItem("${DENSITY_KEY}")||"comfortable";document.documentElement.setAttribute("data-density",d);}catch(e){document.documentElement.setAttribute("data-theme","light");document.documentElement.setAttribute("data-density","comfortable");}})();`;
+/** Runs before first paint so the theme never flashes. It also marks the
+ *  document as script-capable (`html.js`); reveal start states are scoped to
+ *  that class so a reader without script sees every heading immediately. */
+export const PREFERENCES_BOOTSTRAP = `(function(){document.documentElement.classList.add("js");try{var t=localStorage.getItem("${THEME_KEY}");if(!t){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}document.documentElement.setAttribute("data-theme",t);var d=localStorage.getItem("${DENSITY_KEY}")||"comfortable";document.documentElement.setAttribute("data-density",d);}catch(e){document.documentElement.setAttribute("data-theme","light");document.documentElement.setAttribute("data-density","comfortable");}})();`;
