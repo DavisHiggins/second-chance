@@ -1,268 +1,221 @@
+<div align="center">
+
+<img src="web/public/logo-lockup.png" alt="SecondChance" width="260" />
+
 # SecondChance
 
-Forecasting how long an animal will wait for adoption at the Austin Animal
-Center, so that limited staff attention goes where it changes an outcome.
+**Earlier attention. Shorter waits. More animals home.**
 
-Nine years of records. 136,898 shelter episodes. Every number below was measured
-on 20,165 animals the model never saw, and every one of them is reproducible from
-this repository with `make all`.
+A predictive analytics project built at UNC Charlotte that reads the City of Austin's public shelter records, estimates which animals may wait longest, and turns that into a practical outreach plan — so attention goes to animals earlier, never away from them.
 
-**The one rule this system is built around:** a low predicted adoption probability
-is a request for more help, not less. Nothing here ranks animals by how little
-they are worth spending time on, no screen surfaces an animal for removal, and the
-use policy ships in every API response. The founding paper in this literature
-framed exactly this prediction problem as adoption versus euthanasia, and that is
-precisely the thing this project is built not to be.
+[![Live site](https://img.shields.io/badge/live-secondc.vercel.app-0A9E84?style=for-the-badge&logo=vercel&logoColor=white)](https://secondc.vercel.app)
+[![License: MIT](https://img.shields.io/badge/license-MIT-05274C?style=for-the-badge)](LICENSE)
+[![Next.js 15](https://img.shields.io/badge/Next.js-15-05274C?style=for-the-badge&logo=next.js&logoColor=white)](web)
+[![Python 3.11](https://img.shields.io/badge/Python-3.11-05274C?style=for-the-badge&logo=python&logoColor=white)](pyproject.toml)
+[![Data: City of Austin](https://img.shields.io/badge/data-City%20of%20Austin%20open%20data-0A9E84?style=for-the-badge)](https://data.austintexas.gov/)
+
+</div>
+
+<details>
+<summary><strong>Skip to a section</strong></summary>
+
+- [What SecondChance does](#what-secondchance-does)
+- [The one rule](#the-one-rule)
+- [The pages](#the-pages)
+- [How the data flows](#how-the-data-flows)
+- [The model](#the-model)
+- [What the numbers mean](#what-the-numbers-mean)
+- [Brand and design system](#brand-and-design-system)
+- [Quick start](#quick-start)
+- [Repository layout](#repository-layout)
+- [Testing](#testing)
+- [The research behind it](#the-research-behind-it)
+- [Limitations](#limitations)
+- [Team](#team)
+- [Data, attribution and licence](#data-attribution-and-licence)
+
+</details>
 
 ---
 
-## What it does
+## What SecondChance does
 
-Three predictions from what is knowable at the intake desk, before anyone has
-watched the animal:
+Every hour the City of Austin publishes intake and outcome records for the Austin Animal Center. SecondChance reads them, pairs each arrival with the outcome that closed it, counts the stays still open, and computes waits, medians and adoption rates from what actually happened. For each open cat or dog stay a model estimates, from what was known at intake, the chance the stay runs past 60 days and the chance of adoption by day 30.
 
-| Question | Answer |
+Staff see three things side by side: **what was observed** (the wait, the record), **what was estimated and when** (an intake-time estimate, never a forecast from today), and **what a written rule suggests doing about it**. A planner turns a shortlist into a week of outreach work with every assumption written down.
+
+| For | It offers |
 |---|---|
-| Will it go home this week? | 7, 14 and 30 day adoption probability |
-| Will it still be here in two months? | Long-stay risk |
-| What does the whole wait look like? | A competing-risk survival curve |
+| Shelter staff and volunteers | A triage queue that leads with actual waiting time, a record page per animal, and a plan builder with CSV and print exports |
+| Shelter leadership | Twelve-month trends, outcome shares and life-stage waits with definitions attached to every figure |
+| Reviewers and other shelters | A fully documented data path, model evaluation, subgroup checks, and a workflow that transfers even though the model does not |
 
-Those feed a ranked queue of the animals most likely to become long-stay
-residents, with the intervention each one needs: photography, foster placement,
-medical and behaviour support, breed-specific rescue outreach, a senior adoption
-event.
+## The one rule
 
-## Four findings worth defending
+> **A high predicted long-stay risk is a request for more help, not less.** Scores route help toward animals. They must never be used to justify euthanasia, intake refusal, or reduced care.
 
-**1. The standard estimator is wrong here, by a lot.** Fifty-one percent of exits
-from this shelter are not adoptions. An animal transferred to a rescue partner on
-day three cannot be adopted from Austin on day thirty; it has left the risk set
-entirely. Treat that as ordinary censoring, which is what the shelter analytics
-literature does, and 30 day adoption is overstated by 23.7 percentage points, a
-72 percent relative error. By one year the naive estimator says 98.8 percent of
-arrivals are adopted. The correct figure is 48.3. Those two numbers describe
-different shelters.
+That policy ships on every operational page, in the data drawer, on Impact and on How it works. It is enforced in code where it can be: the public records grid receives a projection type with no field that could carry a score, and the intervention rules never prescribe a medical action.
 
-**2. Calibration failed before discrimination, and harder.** The model was frozen
-on 2018 data and then met March 2020. Its ability to rank animals barely moved:
-mean monthly AUC 0.778 before, 0.789 after. What broke was the numbers. In July
-2020 it predicted a 30 day adoption rate 7.6 points above what happened. A
-dashboard watching AUC alone would have shown a healthy model for months.
+## The pages
 
-**3. The language model earns its place on one target and not the other.** A
-structured breed reference built by an LLM beats a hand-written keyword baseline
-by 0.012 AUC on long-stay risk, decisively. On 30 day adoption it beats it by
-0.0003, which is nothing. Reporting only the flattering half would have been easy.
+| Path | Page | What it is for |
+|---|---|---|
+| `/` | **Shelter overview** | Live open-stay count, four headline figures with “What this means”, needs-attention preview, trends, model context, and a three-step workflow guide |
+| `/queue` | **Animals that may need extra support** | Open stays with intake-time estimates beside actual waits; URL-backed filters, chips, table or cards, “View record” and “Add to plan” |
+| `/discover` | **Explore shelter records** | Public browsing of open records with search, age and wait filters, bounded batches, no scores |
+| `/discover/[id]` | **Name · Animal ID** | Stay timeline, recorded facts (age now vs. at intake, unknown ≠ no), staff estimates with horizon, data-quality notes, suggested support, official contact link |
+| `/planner` | **Build this week’s outreach plan** | Capacity → available actions → review; manual picks first, automatic fill in rotation; planning estimate in percentage points; local progress checklist; CSV and print |
+| `/impact` | **Turning shelter data into earlier support** | Three concrete uses, what the data shows, potential vs. measured, national applicability, the guardrail |
+| `/model` | **Understand the data and predictions** | Plain-language intro, data and refresh, metric guide, predictions, testing, subgroup checks, limitations, technical lineage |
+| `/about` | **About SecondChance** | Project origin, the team, Austin and beyond, what it can and cannot do |
 
-**4. Three classes of feature will silently break a drift detector.** Features
-monotone in calendar time have an unbounded PSI against any earlier reference.
-Shelter-level covariates are near constant within a period, so their PSI saturates
-on an ordinary month. Calendar-cycle features drift quarter over quarter by
-construction. All three are handled explicitly rather than tuned around, and the
-first are excluded from the deployed model entirely.
+## How the data flows
 
-## Headline results
+```
+City of Austin Socrata API            (hourly publication)
+  │  pyqf-r2dc  intakes   ─┐  current ShelterBuddy feeds, from 5 May 2025
+  │  gsvs-ypi7  outcomes  ─┘
+  ▼
+web/src/lib/austin/client.server.ts   paged reads, stable ordering, retries; portal metadata for rowsUpdatedAt
+web/src/lib/austin/schemas.ts         zod validation; rejected rows are counted, never dropped
+web/src/lib/austin/build-episodes.ts  each intake paired with the outcome that names it; near misses marked ambiguous
+web/src/lib/austin/current-inventory.ts open stays as of one snapshot, on Austin's clock
+web/src/lib/austin/metrics.ts         medians, cohort rates with eligible denominators, outcome shares, monthly series
+web/src/lib/model/registry.server.ts  eligible open stays scored by the committed model artifact
+web/src/lib/shelter.server.ts         the finished view, cached for 30 minutes, the only module a page imports
+```
 
-Strictly temporal split: train through 2018, calibrate on 2019, test on 2020 to
-January 2022, deliberately across the 2020 break.
+Five clocks are kept apart and named in the data drawer: the publisher's last write (`rowsUpdatedAt`), the newest row stamp, the newest animal event, this site's retrieval time, and the snapshot moment. Austin's floating timestamps are America/Chicago wall-clock time; they are converted through that zone before being compared with anything real (`web/src/lib/austin/time.ts`). There is no push subscription: the site re-reads the feeds on a bounded schedule, and a new request never counts as a new publication.
 
-| Target | Base rate | AUC | 95% CI | ECE | lift@50 |
-|---|---|---|---|---|---|
-| Adopted within 7 days | 16.6% | **0.827** | 0.821 to 0.835 | 0.022 | 4.33 |
-| Adopted within 14 days | 27.6% | **0.816** | 0.811 to 0.823 | 0.018 | 2.97 |
-| Adopted within 30 days | 37.2% | **0.803** | 0.797 to 0.809 | 0.023 | 2.52 |
-| Long stay past 60 days | 11.6% | **0.765** | 0.754 to 0.775 | 0.018 | 4.15 |
+## The model
 
-The last column is the one a shelter director would ask for. The top 50 of the
-long-stay queue contains 4.2 times as many true long-stay animals as a random 50;
-48 percent of that top 50 really did stay past sixty days, against a base rate of
-11.6.
+Two LightGBM classifiers trained on completed stays from the current feeds, calibrated with isotonic regression on a later validation block, and evaluated on a still-later held-out test block. Every metric on the site is read from the committed artifact `web/src/data/model/model.json`; nothing is typed in by hand. Golden vectors written by the trainer are replayed through the TypeScript evaluator in tests so the two cannot drift.
 
-**The leakage control:** train the entire model on randomly shuffled labels. It
-comes back at 0.5023. Nothing in the 56 features encodes the outcome.
+| Target | Evaluated on | ROC AUC | ECE | Lift in top 50 |
+|---|---|---|---|---|
+| Stay past 60 days | 3,079 held-out stays | 0.694 | 0.047 | 5.57× |
+| Adopted by day 30 | 3,217 held-out stays | 0.803 | 0.062 | 2.39× |
 
----
+Both estimates are answered **at intake**. For an animal already past 60 days the site leads with that fact and keeps the intake estimate as context. Subgroup performance is reported by species, life stage, intake condition, breed structure and coat colour, in percentage points with group sizes; small groups are shown without a judgement. One known population issue is disclosed on How it works: stays recorded with an intake condition of “Dead” are present in the evaluation set and removing them requires a documented retrain.
+
+## What the numbers mean
+
+A single metric registry (`web/src/lib/metrics/registry.ts`) defines every figure once — meaning, unit, formula, window, sample, use, limitation and source — and feeds the dashboard tiles, chart notes, record pages, the data drawer and the How it works glossary. A few that are easy to misread:
+
+- **Adopted within 30 days** divides by arrivals that have had a full 30 days, not by all arrivals.
+- **Median days to adoption** is a statistic over adopted animals only; the adopted sample is shown beside it.
+- **Monthly intakes and adoptions** are two event counts that can involve different animals; the lines are never divided.
+- **Historical evidence** on the planner means an association in the 2013–2022 archive; nothing on the site is a measured intervention effect.
+- **The planning estimate** is an assumed increase in **percentage points**, capped at 100% per animal, with rows past their 30-day window counted as hypothetical.
+
+## Brand and design system
+
+The identity is the logo: the navy of the dog and the teal of the arrow that reopens the circle. Colours resolve through CSS custom properties in `web/src/app/globals.css`; a raw hex in a component is a bug.
+
+| Role | Light | Dark |
+|---|---|---|
+| ![#05274C](https://img.shields.io/badge/-05274C-05274C) Navy | `#05274C` | ground, `#041D38` deep |
+| ![#0A9E84](https://img.shields.io/badge/-0A9E84-0A9E84) Teal | `#0A9E84` (`#0A7A66` for text) | `#2FC3A5` (`#4FD8BC` strong) |
+| ![#F6F8F8](https://img.shields.io/badge/-F6F8F8-F6F8F8) Page / card | `#F6F8F8` / `#FCFDFD` | `#06111B` / `#0C1B27` |
+| ![#0A1620](https://img.shields.io/badge/-0A1620-0A1620) Ink | `#0A1620` | `#F2F7F7` |
+| ![#D9642F](https://img.shields.io/badge/-D9642F-D9642F) Warm accent | `#D9642F`, rationed for long waits and calls to act | `#F0864F` |
+
+Typography is **Manrope** for prose and interface and **IBM Plex Mono** for IDs and timestamps, with tabular numerals wherever values align. Motion is one system: Lenis smooth wheel scrolling driven from the GSAP ticker, masked line reveals for main headings, a 420ms section entrance, animated section dividers, a 220ms route transition, and a circular-reveal mobile menu — all immediate under reduced motion. Third-party motion sources are recorded in [`web/ATTRIBUTION.md`](web/ATTRIBUTION.md).
 
 ## Quick start
 
+### The web app
+
+```bash
+cd web
+npm install
+npm run dev            # http://localhost:3000, reads Austin's feeds anonymously
+```
+
+Everything in `web/.env.example` is optional. A Socrata app token gives the site its own throttling pool; set it before taking real traffic.
+
+```bash
+npm run typecheck && npm run lint && npm test && npm run build
+```
+
+### The research pipeline
+
 ```bash
 make setup      # install the package and dev dependencies
-make data       # download the raw CSVs, about 40 MB, once
+make data       # download the raw archive CSVs, about 40 MB, once
 make all        # reproduce every number, figure, PDF and the demo site
 ```
 
-About 35 minutes on two cores. Random seed 20260820 throughout, so a second run
-produces the same numbers to the last decimal place.
+About 35 minutes on two cores, random seed 20260820 throughout. `make help` lists every target; the pipeline is ten plain scripts that can be rerun individually (`make episodes`, `make features`, `make train`, …). `analysis/20_train_shelterbuddy.py` trains and exports the model the web app actually serves.
 
-`make help` lists every target. The pipeline is a chain of ten plain scripts, so a
-step that fails can be fixed and rerun on its own:
-
-```bash
-make episodes      # 01  reconstruct episodes from the two event logs
-make features      # 02  build the 58-column feature matrix
-make train         # 03  four targets, four models
-make ablations     # 04  feature blocks, breed, weather, shuffled-label control
-make survival      # 05  Kaplan-Meier, Aalen-Johansen, Cox, discrete hazard
-make interpret     # 06  SHAP, permutation importance, partial dependence
-make drift         # 07  drift detection, monitoring, retraining
-make timefeatures  # 09  the monotone calendar-time experiment
-make figures       # 08  every figure
-make export        # 10  MEASURED_RESULTS.json and the website fixtures
-```
-
-### The command line tool
-
-```bash
-secondchance audit --intakes data/raw/aac_intakes_20220304.csv \
-                   --outcomes data/raw/aac_outcomes_20220304.csv
-
-secondchance build --intakes data/raw/aac_intakes_20220304.csv \
-                   --outcomes data/raw/aac_outcomes_20220304.csv \
-                   --weather data/raw/austin_weather_USW00013958.csv \
-                   --output data/interim/features.parquet
-
-secondchance train --features data/interim/features.parquet \
-                   --target adopted_within_30d --model lightgbm
-```
-
-`secondchance train` applies the same cohort definition the paper uses and
-reproduces the results table exactly: AUC 0.8028, ECE 0.0230, Brier 0.1737.
-
----
-
-## Layout
+## Repository layout
 
 ```
-src/secondchance/      the library. Everything with a number in it is here.
-  episodes.py            episode reconstruction, and the audit that defends it
-  features.py            58 features, the cohort definition, the block structure
-  modeling.py            split, calibration, metrics, bootstrap comparisons
-  survival.py            KM, Aalen-Johansen, Cox, discrete-time competing hazards
-  labeling/              structured breed attributes: the LLM path and its baseline
-  monitor/               drift, performance, and the weekly monitoring Lambda
-  ingest/                clients and Lambdas for the four public data sources
-  pipeline/              warehouse rebuild, training, the promotion gate
-  serve/                 the prediction API, and where the use policy is enforced
-  cli.py                 the console script
-
-analysis/              ten scripts, run in order, that produce every number
-tests/                 366 tests
-sql/                   the warehouse: schema, staging, episodes, analytics
-infra/template.yaml    the whole AWS deployment as one SAM template
-scripts/               publish_baseline.py, verify_numbers.py
-
-deliverables/          six documents, built to PDF from markdown
-presentation/          the deck and a timed speaker script
-website_build_package/ everything needed to build the web application
-docs/                  model card, runbook, cost model, data dictionary, decision log
-results/               MEASURED_RESULTS.json, figures, tables
+web/                     the Next.js 15 application (App Router, React 19, TypeScript strict, Tailwind v4)
+  src/app/                 routes: /, /queue, /discover, /discover/[id], /planner, /impact, /model, /about
+  src/components/          shell, motion primitives, dashboard, queue, discover, planner, model, ui
+  src/lib/austin/          Socrata client, schemas, episode pairing, inventory, metrics, time, status
+  src/lib/model/           artifact types, feature derivation, tree evaluator, horizon labels, presentation
+  src/lib/metrics/         the shared metric registry
+  src/lib/planner.ts       plan building, scenario arithmetic, CSV export
+  src/data/model/          the committed model artifact
+  tests/                   vitest: episodes, model parity, time/status, metrics, planner/CSV
+src/secondchance/        the Python library behind the archive study and the trainer
+analysis/                the numbered research scripts, plus 20_train_shelterbuddy.py
+tests/                   366 Python tests
+docs/                    model card, runbook, cost model, data dictionary, decision log, upgrade checklist
+deliverables/            paper, literature review, reviews, outline, work plan (built to PDF)
+results/                 MEASURED_RESULTS.json, figures, tables
+sql/  infra/  scripts/   warehouse SQL, the SAM template, verification scripts
 ```
-
-### Where the numbers live
-
-`results/MEASURED_RESULTS.json` is the single source of truth. The paper, the
-deck, the model card and the website all read from it, and none of them contains a
-number typed in by hand.
-
-That is checked rather than promised:
-
-```bash
-python3 scripts/verify_numbers.py --verbose
-```
-
-It reformats every headline figure the way the documents write it, asserts the
-string is actually present, recomputes the internal arithmetic, and refuses any
-JSON containing a bare `NaN`. It runs on every push. A number edited in the paper
-and not in the pipeline fails there.
-
----
-
-## The deployed system
-
-Four public APIs on a schedule into an append-only S3 landing zone that keeps
-every raw response forever. Redshift Serverless for the joins. Bedrock for any
-breed token the reference has not seen, once, offline, into a versioned file a
-human reviews before it reaches production. SageMaker for training, every model
-registered against its data cutoff and its feature hash. An API where every
-response carries the model version, the data freshness and the use policy. A
-weekly monitoring job behind six CloudWatch alarms.
-
-**$34.07 a month**, because training is transient and there is no persistent
-endpoint. `docs/03_COST_MODEL.md` has the line items and the receipts.
-
-```bash
-sam build --template infra/template.yaml
-sam deploy --guided
-```
-
-`docs/02_AWS_SETUP_RUNBOOK.md` is the full step-by-step, including the two API
-tokens and the one manual approval the design deliberately does not automate.
-
-### What is not automated, on purpose
-
-- **Model promotion.** The gate computes the comparison and writes down what it
-  would do. A person decides. The paper documents a case where the automatic rule
-  would have promoted a challenger that was better only because of the window it
-  was evaluated on.
-- **New breed labels.** They land in a pending file and stay there until a human
-  approves them. An automated label that feeds a decision about an animal should
-  not reach production because a cron job succeeded.
-
----
 
 ## Testing
 
 ```bash
-make check      # lint, type check, and the full suite
-make test       # just the tests
+cd web && npm test          # 58 unit tests: episodes, model parity, Austin time and freshness,
+                            # cohort metrics, horizon labels, planner maths, CSV safety
+make check                  # Python: lint, type check, 366 tests, 94% coverage
 ```
 
-366 tests, 94 percent coverage. The ones that matter most are in
-`tests/test_episodes.py`, because a wrong pairing between intake and outcome rows
-is silent: the durations still look plausible, the models still train, and every
-number downstream is quietly wrong.
+The tests that matter most are the ones guarding silent errors: a wrong intake–outcome pairing, a floating timestamp compared to UTC, a rate divided by the wrong denominator, or a CSV cell that opens as a formula.
 
-`tests/test_serve.py` asserts the ethical constraint directly. The use policy has
-to be present on every scoring response, and no field in the prediction payload
-may be named anything a person could read as a removal recommendation. That is
-where the promise stops being a promise and becomes something that fails a build.
+## The research behind it
 
----
+The project began as a study of the full Austin archive (October 2013 to March 2022, 136,898 episodes) under the previous shelter system. Those findings still stand and are kept in `deliverables/` and `docs/`; the archive model is **not** the one scoring the site, because the source system, schema and animal-ID namespace all changed in May 2025.
+
+1. **The standard estimator is wrong here, by a lot.** Fifty-one percent of exits are not adoptions. Treating transfers as ordinary censoring overstates 30-day adoption by 23.7 percentage points; by one year the naive estimator says 98.8 percent of arrivals are adopted, the correct figure is 48.3.
+2. **Calibration failed before discrimination.** Frozen on 2018 data and run into March 2020, the model's ranking barely moved (AUC 0.778 → 0.789) while its probabilities drifted up to 7.6 points. A dashboard watching AUC alone would have called it healthy.
+3. **The language model earns its place on one target and not the other.** A structured breed reference beats a keyword baseline by 0.012 AUC on long-stay risk and by 0.0003 on 30-day adoption.
+4. **Three classes of feature silently break a drift detector** — monotone calendar time, near-constant shelter-level covariates, and calendar cycles — and are handled explicitly.
+
+Archive results (train through 2018, calibrate 2019, test 2020 – Jan 2022):
+
+| Target | Base rate | AUC | ECE | lift@50 |
+|---|---|---|---|---|
+| Adopted within 7 days | 16.6% | 0.827 | 0.022 | 4.33 |
+| Adopted within 30 days | 37.2% | 0.803 | 0.023 | 2.52 |
+| Long stay past 60 days | 11.6% | 0.765 | 0.018 | 4.15 |
+
+`results/MEASURED_RESULTS.json` is the single source of truth for those figures; `scripts/verify_numbers.py` asserts that every document reproduces them.
 
 ## Limitations
 
-Three things this project does not claim.
+- **No behavioural data.** The strongest remaining signal is not in any public export.
+- **Breed is a staff guess.** Findings about bully-type labels are findings about a label, not about animals.
+- **The queue finds animals; nobody has shown that acting on it changes what happens to them.** That needs a prospective study. The site says “potential benefit”, never “animals saved”.
+- **One shelter, one city.** The workflow transfers; the model should be retrained and re-evaluated locally before use anywhere else.
+- **Dead-on-arrival records** are present in the current model's evaluation set; see How it works.
 
-**No behavioural data.** Protopopova and colleagues showed that is where the
-remaining signal is, and none of it exists in any public export. An AUC much above
-0.80 from administrative records alone would be a leak rather than an achievement.
+## Team
 
-**Breed is a staff guess.** Olson and colleagues measured 50 percent sensitivity
-against DNA for pit bull identification. The bully-type finding in this paper is a
-finding about a label, not about animals.
+**Built by Davis Higgins, Bennett Shearin, Seth Sumter, and Hunter Pace** — UNC Charlotte project team, DTSC 3601.
 
-**The queue finds the right animals; nobody has shown that acting on it changes
-what happens to them.** That needs a prospective study, it is in the model card,
-and it is what I would do next.
+SecondChance is a student research prototype. It is not affiliated with the Austin Animal Center, and an open intake record on the site does not confirm that an animal is available for adoption.
 
-A known, measured fairness gap: dogs carrying a bully-type breed label are ranked
-less accurately than other dogs (AUC 0.754 against 0.807) and the model is
-under-confident about them. Because the queue routes help toward low adoption
-scores, that error pushes them higher in the queue, which is the safer direction.
-It is still an error and it is documented in `docs/01_MODEL_CARD.md`.
+## Data, attribution and licence
 
----
+- Austin Animal Center Intakes and Outcomes, current feeds `pyqf-r2dc` and `gsvs-ypi7` (hourly, from 5 May 2025), and archives `wter-evkm` and `9t4d-g238` (frozen at the cutover) — City of Austin Open Data Portal, public domain.
+- Motion components adapted from a privately licensed pack are documented, with original paths and every change, in [`web/ATTRIBUTION.md`](web/ATTRIBUTION.md). They are not redistributed.
+- Manrope and IBM Plex Mono, SIL Open Font License 1.1.
 
-## Data and licence
-
-- Austin Animal Center Intakes, City of Austin Open Data Portal, `wter-evkm`
-- Austin Animal Center Outcomes, City of Austin Open Data Portal, `9t4d-g238`
-- National Weather Service observations API, station KATT
-- RescueGroups.org Adoptable Pet Data API
-
-Austin's data is published under the City of Austin's open data terms. Code in
-this repository is MIT licensed. The structured breed reference in
-`data/reference/` was produced by a language model at temperature zero from a
-versioned prompt and is documented in `docs/06_LLM_EVALUATION.md`.
-
-**Davis Higgins, Bennett Shearin, Seth Sumter, Hunter Pace**, DTSC 3601, UNC Charlotte.
+The source code in this repository is released under the [MIT License](LICENSE).

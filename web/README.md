@@ -8,8 +8,9 @@ directly; there are no fixtures and no stored snapshot to fall back to.
 **The rule that overrides everything:** the system routes help *toward*
 animals. Nothing in this interface may present a score as a reason to
 euthanise, refuse intake, or reduce care. A low predicted adoption probability
-means "this one needs more help". The full policy is in the footer of every
-page, verbatim, and it is not collapsible.
+means "this one needs more help". The short policy sits under every
+operational page title; the full policy is on Impact, How it works and in the
+data drawer, one click from the footer on every page.
 
 ## Running it
 
@@ -49,9 +50,11 @@ lib/shelter.server.ts       the only module a page imports
 ```
 
 An episode is one stay, not one animal, so an animal that comes back three
-times has three episode ids. The hourly cache sits around the finished view in
-`shelter.server.ts`, not around the source rows: a feed is several megabytes
-and Next's data cache refuses anything over 2MB.
+times has three episode ids. The view cache (thirty minutes, `VIEW_CACHE_SECONDS`
+in `lib/austin/status.ts`) sits around the finished view in `shelter.server.ts`,
+not around the source rows: a feed is several megabytes and Next's data cache
+refuses anything over 2MB. `lib/austin/time.ts` converts Austin's floating
+timestamps through America/Chicago before any comparison with a real clock.
 
 This deviates from the original spec, which asked for Vite + Wouter +
 TanStack Query. Everything else in the spec package is honoured.
@@ -66,13 +69,18 @@ TanStack Query. Everything else in the spec package is honoured.
   `logo.png`. Components ask for the *role* (`--accent`, `--accent-strong`,
   `--accent-soft`, `--accent-contrast`) so the dark theme can substitute a
   brighter teal without touching a component.
-- **Numeric spacing utilities are remapped.** `@theme inline` binds
-  `--spacing-1` … `--spacing-12` to the design system's space scale, so `h-7` is
-  40px and `h-9` is 64px, not 28px and 36px. Measure before assuming.
+- **Numeric spacing utilities are Tailwind's own 4px scale.** They are no
+  longer remapped onto `--space-*` (that made `h-11` render at 96px). Use
+  `var(--space-N)` by name when a component wants the design-system scale.
 - Every number goes through `src/lib/format.ts`. `null` renders as
   "not measured", never 0.
 - Every string comes from `src/lib/content.ts`.
-- Every motion variant comes from `src/lib/motion.ts`.
+- Every metric definition comes from `src/lib/metrics/registry.ts`, and every
+  prediction horizon label from `src/lib/model/horizon.ts`.
+- Motion primitives live in `src/components/motion/`: `SmoothScrollProvider`,
+  `RevealText`, `RevealSection`, `AnimatedDivider`, plus the shell's
+  `PageTransition` and `MobileMenu`. One RAF owner (the GSAP ticker), and every
+  one is immediate under reduced motion.
 - **No page imports below `lib/shelter.server.ts`.** That module is the seam
   where source data, model output and metric definitions meet, and it is the
   only place allowed to decide what a page may claim.
