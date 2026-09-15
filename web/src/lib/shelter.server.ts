@@ -7,9 +7,10 @@ import { getCurrentShelterData } from "@/lib/austin/current.server";
 import { loadScoringModel, riskBand, scoreEpisodes, type RiskBand } from "@/lib/model/registry.server";
 import type { CurrentStay } from "@/lib/austin/current-inventory";
 import { lifeStageFor } from "@/lib/austin/current-inventory";
-import type { DataStatus, ScoringStatus } from "@/lib/austin/status";
+import { VIEW_CACHE_SECONDS, type DataStatus, type ScoringStatus } from "@/lib/austin/status";
 import type { Episode } from "@/lib/austin/types";
-import { parseSourceTimestamp } from "@/lib/austin/types";
+import { isAdoptionOutcome, parseSourceTimestamp } from "@/lib/austin/types";
+import { austinNowFloating } from "@/lib/austin/time";
 import {
   ANIMALS_IN_CARE,
   ADOPTED_WITHIN_30D,
@@ -70,6 +71,16 @@ export interface ShelterMetrics {
   outcomes: MeasuredMetric<OutcomeMix[]>;
 }
 
+/** A stay that closed recently, kept so a stale deep link can say so. */
+export interface RecentlyClosed {
+  episodeId: string;
+  animalId: string;
+  name: string | null;
+  outcomeAt: string;
+  /** "Adopted", "Transfer", … as the feed words it, adoption variants folded. */
+  outcome: string;
+}
+
 export interface ShelterView {
   status: DataStatus;
   scoringStatus: ScoringStatus;
@@ -78,6 +89,10 @@ export interface ShelterView {
   metrics: ShelterMetrics;
   trends: MonthlyPoint[];
   segments: SegmentRow[];
+  /** The twelve-month window every dashboard rate is computed over. */
+  window: { start: string; end: string };
+  /** Stays closed in the last sixty days, for deep links that outlived them. */
+  recentlyClosed: RecentlyClosed[];
   /** Rows the model declined to score, with the reason, for transparency. */
   unscored: { reason: string; count: number }[];
   /** Population-level feature importance, shared by every explanation panel.
@@ -92,14 +107,20 @@ export interface ShelterView {
  *  describe the shelter as it operates now. */
 const TREND_WINDOW_DAYS = 365;
 
+/** How far back a closed stay stays addressable by its deep link. */
+const RECENTLY_CLOSED_DAYS = 60;
+
 function isoDaysAgo(from: string, days: number): string {
   const base = parseSourceTimestamp(from) ?? Date.parse(from);
   return new Date(base - days * 86_400_000).toISOString().replace("Z", "");
 }
 
+function metricWindow(asOf: string): { start: string; end: string } {
+  return { start: isoDaysAgo(asOf, TREND_WINDOW_DAYS), end: asOf.replace("Z", "") };
+}
+
 function buildMetrics(episodes: Episode[], asOf: string, inCare: number): ShelterMetrics {
-  const windowEnd = asOf.replace("Z", "");
-  const windowStart = isoDaysAgo(asOf, TREND_WINDOW_DAYS);
+  const { start: windowStart, end: windowEnd } = metricWindow(asOf);
 
   return {
     animalsInCare: { value: inCare, n: inCare, definition: ANIMALS_IN_CARE },
@@ -114,13 +135,16 @@ async function loadShelterView(): Promise<ShelterView> {
   const [data, model] = await Promise.all([getCurrentShelterData(), loadScoringModel()]);
 
   if (!data.inventory) {
+    const now = austinNowFloating();
     return {
       status: data.status,
       scoringStatus: data.status.scoringStatus,
       stays: [],
-      metrics: buildMetrics([], new Date().toISOString(), 0),
+      metrics: buildMetrics([], now, 0),
       trends: [],
       segments: [],
+      window: metricWindow(now),
+      recentlyClosed: [],
       unscored: [],
       modelDrivers: [],
       definitions: [ANIMALS_IN_CARE, MEDIAN_DAYS_TO_ADOPTION, ADOPTED_WITHIN_30D, LONG_STAY_OBSERVED, CURRENT_QUEUE],
@@ -143,13 +167,38 @@ async function loadShelterView(): Promise<ShelterView> {
     };
   });
 
+  const asOf = data.inventory.asOf;
+  const window = metricWindow(asOf);
+  const closedSince = isoDaysAgo(asOf, RECENTLY_CLOSED_DAYS);
+  const recentlyClosed: RecentlyClosed[] = data.episodes
+    .filter(
+      (episode) =>
+        episode.joinStatus === "matched" &&
+        episode.outcomeAt !== null &&
+        episode.outcomeAt >= closedSince,
+    )
+    .map((episode) => ({
+      episodeId: episode.episodeId,
+      animalId: episode.animalId,
+      name: episode.name,
+      outcomeAt: episode.outcomeAt as string,
+      outcome: isAdoptionOutcome(episode.outcomeType) ? "Adopted" : (episode.outcomeType ?? "Closed"),
+    }));
+
   return {
     status: data.status,
     scoringStatus: scored.scoringStatus,
     stays,
-    metrics: buildMetrics(data.episodes, data.inventory.asOf, data.inventory.stays.length),
-    trends: monthlySeries(data.episodes),
-    segments: segmentByLifeStage(data.episodes, (species, age) => lifeStageFor(species, age)),
+    metrics: buildMetrics(data.episodes, asOf, data.inventory.stays.length),
+    trends: monthlySeries(data.episodes, asOf),
+    segments: segmentByLifeStage(
+      data.episodes,
+      (species, age) => lifeStageFor(species, age),
+      window.start,
+      window.end,
+    ),
+    window,
+    recentlyClosed,
     unscored: scored.unscored,
     modelDrivers: scored.drivers,
     definitions: [
@@ -163,7 +212,10 @@ async function loadShelterView(): Promise<ShelterView> {
 }
 
 /**
- * The hourly cache boundary.
+ * The view cache boundary. Reused for `VIEW_CACHE_SECONDS` (thirty minutes)
+ * before the feeds are re-read; Austin writes hourly, so the worst case is
+ * about ninety minutes behind the publisher and the drawer shows the actual
+ * publisher time so nobody has to guess.
  *
  * This wraps the derived view rather than the source rows, and that placement
  * is the whole point. The two current feeds are 6.6MB and 7.4MB of JSON;
@@ -195,8 +247,8 @@ const loadCachedShelterView = unstable_cache(
     if (!view.status.retrievedAt) throw new FeedUnavailableError(view);
     return view;
   },
-  ["shelter-view-v1"],
-  { revalidate: 3600, tags: ["austin"] },
+  ["shelter-view-v2"],
+  { revalidate: VIEW_CACHE_SECONDS, tags: ["austin"] },
 );
 
 async function loadShelterViewOrUnavailable(): Promise<ShelterView> {
@@ -272,6 +324,7 @@ export interface PublicStay {
   name: string | null;
   species: string;
   breed: string | null;
+  intakeAt: string;
   daysInCare: number;
   currentAgeDays: number | null;
   possiblyStale: boolean;
@@ -284,6 +337,7 @@ export function toPublicStays(stays: readonly ScoredStay[]): PublicStay[] {
     name: stay.name,
     species: stay.species,
     breed: stay.breed,
+    intakeAt: stay.intakeAt,
     daysInCare: stay.daysInCare,
     currentAgeDays: stay.currentAgeDays,
     possiblyStale: stay.possiblyStale,
@@ -298,20 +352,47 @@ export function findStay(view: ShelterView, id: string): ScoredStay {
   return match;
 }
 
+/** Why a deep link found nothing, so the page can say something useful. */
+export type MissingRecord =
+  | { kind: "closed"; record: RecentlyClosed }
+  | { kind: "invalid" }
+  | { kind: "unknown" };
+
+const EPISODE_ID = /^sb:[^:]+:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$/;
+const ANIMAL_ID = /^[A-Za-z]?\d{1,10}$/;
+
+export function explainMissing(view: ShelterView, id: string): MissingRecord {
+  const closed =
+    view.recentlyClosed.find((row) => row.episodeId === id) ??
+    view.recentlyClosed
+      .filter((row) => row.animalId === id)
+      .sort((a, b) => b.outcomeAt.localeCompare(a.outcomeAt))[0];
+  if (closed) return { kind: "closed", record: closed };
+  if (!EPISODE_ID.test(id) && !ANIMAL_ID.test(id)) return { kind: "invalid" };
+  return { kind: "unknown" };
+}
+
 /* -------------------------------------------------------------------------- */
 
 export interface InterventionChannel {
   channel: string;
   label: string;
   rationale: string;
-  evidence: "measured" | "assumed";
+  /**
+   * "historical": a historical association in Austin data supports the
+   * pairing of animal characteristic and channel. It does not measure the
+   * effect of the action. "assumed": nothing in the data speaks to it.
+   * There is no "measured" value because no intervention evaluation exists.
+   */
+  evidence: "historical" | "assumed";
   evidence_detail: string;
   staff_minutes: number;
+  time_note: string;
 }
 
-/** Outreach channels. Each row states whether its effect was measured in the
- *  Austin data or is an assumption, and the planner shows that label wherever
- *  the channel appears. */
+/** Outreach channels. Each row states whether a historical association in
+ *  the Austin data supports it or whether it is an assumption, and the planner
+ *  shows that label wherever the channel appears. */
 export function getInterventionChannels(): InterventionChannel[] {
   return (interventionsFixture as { channels: InterventionChannel[] }).channels;
 }

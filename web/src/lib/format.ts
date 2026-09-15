@@ -6,6 +6,8 @@
  * null to mean "not measured" and the interface has to say the same thing.
  */
 
+import { austinZoneLabel, sourceTimestampToUtcMs, toUtcMs, utcToAustinFloating } from "@/lib/austin/time";
+
 export const NOT_MEASURED = "not measured";
 
 type Maybe = number | null | undefined;
@@ -161,9 +163,63 @@ export function formatInTen(probability: Maybe): string | null {
   return `${n} in 10`;
 }
 
-/** Hours between an ISO timestamp and now, used by the freshness chip. */
+/** Hours between a timestamp and now. Floating values are read as Austin
+ *  time; offset-bearing values as written. */
 export function hoursSince(iso: string, now: number = Date.now()): number {
-  const then = Date.parse(iso);
-  if (Number.isNaN(then)) return Number.POSITIVE_INFINITY;
+  const then = toUtcMs(iso);
+  if (then === null) return Number.POSITIVE_INFINITY;
   return (now - then) / 3_600_000;
+}
+
+/**
+ * A real instant (our own retrieval time, the publisher's write time),
+ * shown on Austin's clock with the zone named: "15 Sep 2026, 10:00 CDT".
+ * Every clock on the site reads the same way, so a viewer in another zone
+ * is never left comparing a UTC stamp with a local one.
+ */
+export function formatInstant(isoUtc: string | null | undefined): string {
+  if (!isoUtc) return NOT_MEASURED;
+  const ms = toUtcMs(isoUtc);
+  if (ms === null) return NOT_MEASURED;
+  return `${formatDateTime(utcToAustinFloating(ms))} ${austinZoneLabel(ms)}`;
+}
+
+/** A floating source timestamp, with the zone it was written in. */
+export function formatSourceTime(floating: string | null | undefined): string {
+  if (!floating) return NOT_MEASURED;
+  const ms = sourceTimestampToUtcMs(floating);
+  const base = formatDateTime(floating);
+  if (base === NOT_MEASURED || ms === null) return base;
+  return `${base} ${austinZoneLabel(ms)}`;
+}
+
+/** "about 2 hours ago", "about 40 minutes ago". For status lines only. */
+export function formatRelativeAge(hours: number | null | undefined): string {
+  if (hours === null || hours === undefined || !Number.isFinite(hours)) return NOT_MEASURED;
+  if (hours < 1) return `about ${Math.max(1, Math.round(hours * 60))} minutes ago`;
+  if (hours < 48) {
+    const rounded = Math.round(hours);
+    return `about ${rounded} ${rounded === 1 ? "hour" : "hours"} ago`;
+  }
+  const days = Math.round(hours / 24);
+  return `about ${days} days ago`;
+}
+
+/** 0.083 becomes "+8.3 percentage points"; unit spelled out so it is never
+ *  mistaken for a relative change. */
+export function formatPercentagePoints(value: Maybe, fractionDigits = 1, signed = true): string {
+  if (isMissing(value)) return NOT_MEASURED;
+  const points = value * 100;
+  const sign = signed ? (points > 0 ? "+" : points < 0 ? "−" : "") : "";
+  const magnitude = Math.abs(points).toFixed(fractionDigits);
+  const unit = Number(magnitude) === 1 ? "percentage point" : "percentage points";
+  return `${sign}${magnitude} ${unit}`;
+}
+
+/** Short form for tight cells: "+8.3 pp". */
+export function formatPp(value: Maybe, fractionDigits = 1): string {
+  if (isMissing(value)) return NOT_MEASURED;
+  const points = value * 100;
+  const sign = points > 0 ? "+" : points < 0 ? "−" : "";
+  return `${sign}${Math.abs(points).toFixed(fractionDigits)} pp`;
 }

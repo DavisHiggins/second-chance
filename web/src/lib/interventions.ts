@@ -4,10 +4,12 @@ import type { CurrentStay } from "@/lib/austin/current-inventory";
 /**
  * Which outreach channel to suggest for one animal.
  *
- * These rules are not model output and are not presented as such. They are a
- * short, readable triage policy over facts already on the record, written down
- * in one place so the planner and the queue suggest the same thing and so a
- * shelter can disagree with a specific rule rather than with a black box.
+ * These rules are not model output and are not presented as such: every
+ * reason string starts with the word "Rule". They are a short, readable
+ * triage policy over facts already on the record, written down in one place
+ * so the planner and the queue suggest the same thing and so a shelter can
+ * disagree with a specific rule rather than with a black box. No rule
+ * prescribes a medical action; the medical channel suggests a review.
  *
  * The ordering matters: a sick senior needs the vet before it needs a weekend
  * event, so condition is tested before life stage.
@@ -42,41 +44,46 @@ export function suggestChannel(stay: CurrentStay): ChannelSuggestion {
   if (matches(stay.condition, NEEDS_CARE)) {
     return {
       channel: CHANNEL_MEDICAL,
-      reason: "Arrived needing medical or behaviour attention, which is the strongest measured brake on a fast exit.",
+      reason:
+        "Rule: the record says this animal arrived needing medical or behaviour attention. In the archive, that condition was associated with slower exits, so a clinical review is suggested before outreach. Staff decide what care is appropriate.",
     };
   }
 
   if (matches(stay.condition, NEEDS_FOSTER) || stay.lifeStage === "juvenile") {
     return {
       channel: CHANNEL_FOSTER,
-      reason: "Young enough that a foster placement is the usual route to adoption in this data.",
+      reason:
+        "Rule: recorded as a neonate, nursing or under a year old. In the archive, foster placement was a common step before adoption for this group.",
     };
   }
 
   if (stay.lifeStage === "senior") {
     return {
       channel: CHANNEL_SENIOR,
-      reason: "Seniors are the slowest life stage in this dataset and need outreach aimed at them.",
+      reason:
+        "Rule: recorded age puts this animal in the senior band. In the 2013–2022 archive, seniors had lower 30-day adoption incidence, so outreach aimed at senior-pet audiences is suggested.",
     };
   }
 
   if (stay.daysInCare >= 60) {
     return {
       channel: CHANNEL_EVENT,
-      reason: "Past 60 days in care, so the priority is putting this animal in front of new traffic.",
+      reason:
+        "Rule: already waiting more than 60 days. The suggestion is to put this animal in front of new traffic.",
     };
   }
 
   if (stay.daysInCare >= 21) {
     return {
       channel: CHANNEL_PHOTOGRAPHY,
-      reason: "Waiting long enough that the listing itself is the cheapest thing left to improve.",
+      reason:
+        "Rule: waiting three weeks or more. The listing itself is the cheapest thing left to improve; the data cannot measure whether it helps.",
     };
   }
 
   return {
     channel: CHANNEL_SOCIAL,
-    reason: "Recent arrival: low-cost reach first, before spending scarce staff hours.",
+    reason: "Rule: recent arrival. Low-cost reach first, before spending scarce staff hours.",
   };
 }
 

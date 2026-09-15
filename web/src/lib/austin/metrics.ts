@@ -220,30 +220,70 @@ export function outcomeMix(
 
 export interface MonthlyPoint {
   month: string;
+  /** Arrival events in the month. */
   intakes: number;
+  /** Adoption events in the month. Not the same animals as the intakes. */
   adoptions: number;
+  /** Median wait among the month's adoptions. */
   medianDaysToAdoption: number | null;
+  /**
+   * Share of the month's arrivals adopted within 30 days of intake, over the
+   * arrivals that have had a full 30 days to be observed. Null until enough
+   * of the month's arrivals have had that opportunity.
+   */
+  adoptedWithin30dRate: number | null;
+  /** Arrivals contributing to that rate. */
+  eligible30d: number;
+  /** True for the current month, which is still being written. */
+  partial: boolean;
 }
 
-/** Monthly intake and adoption counts, for the trend chart. Built from the
- *  episode set already in memory rather than a second network round trip. */
-export function monthlySeries(episodes: Episode[]): MonthlyPoint[] {
-  const buckets = new Map<string, { intakes: number; adoptionDurations: number[] }>();
+/**
+ * Monthly intake and adoption counts, plus a comparable adoption rate.
+ *
+ * The two counts are separate events and may involve different animals, so
+ * dividing one line by the other would not be a cohort adoption rate. The
+ * rate here is a real cohort figure: arrivals in the month who had a full 30
+ * days of observation, adopted by day 30. The current month is flagged as
+ * partial, and its rate is withheld until enough of its arrivals are
+ * observable.
+ */
+export function monthlySeries(episodes: Episode[], observedThrough?: string): MonthlyPoint[] {
+  const buckets = new Map<
+    string,
+    { intakes: number; adoptionDurations: number[]; eligible: number; adoptedWithin: number }
+  >();
 
   const ensure = (month: string) => {
     let bucket = buckets.get(month);
     if (!bucket) {
-      bucket = { intakes: 0, adoptionDurations: [] };
+      bucket = { intakes: 0, adoptionDurations: [], eligible: 0, adoptedWithin: 0 };
       buckets.set(month, bucket);
     }
     return bucket;
   };
 
+  const observedMs = observedThrough ? parseSourceTimestamp(observedThrough) : null;
+  const currentMonth = observedThrough ? observedThrough.slice(0, 7) : null;
+
   for (const episode of episodes) {
     if (!isCompanionSpecies(episode.species)) continue;
     if (episode.joinStatus === "ambiguous") continue;
 
-    ensure(episode.intakeAt.slice(0, 7)).intakes += 1;
+    const arrival = ensure(episode.intakeAt.slice(0, 7));
+    arrival.intakes += 1;
+
+    const intakeMs = parseSourceTimestamp(episode.intakeAt);
+    if (observedMs !== null && intakeMs !== null && observedMs - intakeMs >= 30 * MS_PER_DAY) {
+      arrival.eligible += 1;
+      if (
+        isAdoptionOutcome(episode.outcomeType) &&
+        episode.closedDaysInCare !== null &&
+        episode.closedDaysInCare <= 30
+      ) {
+        arrival.adoptedWithin += 1;
+      }
+    }
 
     if (episode.outcomeAt && isAdoptionOutcome(episode.outcomeType)) {
       const duration = episode.closedDaysInCare;
@@ -259,6 +299,14 @@ export function monthlySeries(episodes: Episode[]): MonthlyPoint[] {
       intakes: bucket.intakes,
       adoptions: bucket.adoptionDurations.length,
       medianDaysToAdoption: median(bucket.adoptionDurations),
+      // A month needs most of its arrivals observable before its rate means
+      // anything; below that the figure would describe the first week only.
+      adoptedWithin30dRate:
+        bucket.eligible >= 20 && bucket.eligible >= bucket.intakes * 0.6
+          ? bucket.adoptedWithin / bucket.eligible
+          : null,
+      eligible30d: bucket.eligible,
+      partial: currentMonth !== null && month >= currentMonth,
     }))
     .sort((a, b) => a.month.localeCompare(b.month));
 }
@@ -266,20 +314,37 @@ export function monthlySeries(episodes: Episode[]): MonthlyPoint[] {
 export interface SegmentRow {
   dimension: string;
   level: string;
+  /** Completed stays in the group and window, whatever the outcome. */
   n: number;
+  /** Adopted stays in the group and window: the sample behind the median. */
+  adopted: number;
   medianDaysToAdoption: number | null;
+  /** Adopted divided by completed stays. Not the same thing as the median. */
   adoptionShare: number | null;
 }
 
-/** Where waits are longest, by a chosen grouping. Purely observed: no model
- *  output is involved, so this stays truthful when scoring is unavailable. */
+/**
+ * Where waits are longest, by life stage at intake, within a window.
+ *
+ * Purely observed: no model output is involved, so this stays truthful when
+ * scoring is unavailable. Two counts are carried on purpose. The median is a
+ * statistic over adopted stays only, so the adopted count is the sample it
+ * rests on; the completed count is the denominator of the adoption share.
+ * Placing one beside the other statistic is how a chart ends up claiming a
+ * sample it does not have.
+ */
 export function segmentByLifeStage(
   episodes: Episode[],
   lifeStageOf: (species: Species, ageDays: number | null) => string,
+  windowStart?: string,
+  windowEnd?: string,
 ): SegmentRow[] {
   const buckets = new Map<string, { durations: number[]; total: number; adopted: number }>();
 
-  for (const episode of analysable(episodes)) {
+  const inWindow = (episode: Episode) =>
+    windowStart && windowEnd ? withinWindow(episode, windowStart, windowEnd) : true;
+
+  for (const episode of analysable(episodes).filter(inWindow)) {
     const level = lifeStageOf(episode.species, episode.ageAtIntakeDays);
     let bucket = buckets.get(level);
     if (!bucket) {
@@ -298,6 +363,7 @@ export function segmentByLifeStage(
       dimension: "life stage",
       level,
       n: bucket.total,
+      adopted: bucket.adopted,
       medianDaysToAdoption: median(bucket.durations),
       adoptionShare: bucket.total === 0 ? null : bucket.adopted / bucket.total,
     }))

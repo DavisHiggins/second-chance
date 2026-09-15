@@ -260,6 +260,44 @@ export async function fetchAggregate(
   return cached();
 }
 
+/**
+ * The portal's own account of when a dataset was last written.
+ *
+ * `rowsUpdatedAt` is a real epoch, unlike the floating row timestamps, and it
+ * is the honest answer to "how current is this feed": a new request from this
+ * site does not make the data newer. A failed metadata read returns null and
+ * the status falls back to the newest row timestamp, converted through the
+ * publisher's zone, rather than failing the whole page over a side channel.
+ */
+export interface DatasetMetadata {
+  rowsUpdatedAt: string | null;
+}
+
+export async function fetchDatasetMetadata(dataset: DatasetRef): Promise<DatasetMetadata> {
+  const cached = unstable_cache(
+    async (): Promise<DatasetMetadata> => {
+      const url = `https://${SOCRATA_DOMAIN}/api/views/${dataset.id}.json`;
+      const headers: Record<string, string> = { accept: "application/json" };
+      const token = appToken();
+      if (token) headers["X-App-Token"] = token;
+
+      try {
+        const response = await fetch(url, { headers, cache: "no-store" });
+        if (!response.ok) return { rowsUpdatedAt: null };
+        const body = (await response.json()) as { rowsUpdatedAt?: unknown };
+        const epoch = typeof body.rowsUpdatedAt === "number" ? body.rowsUpdatedAt : null;
+        return { rowsUpdatedAt: epoch === null ? null : new Date(epoch * 1000).toISOString() };
+      } catch {
+        return { rowsUpdatedAt: null };
+      }
+    },
+    [`austin-meta:${dataset.id}`],
+    { revalidate: 900, tags: [`austin:${dataset.id}`] },
+  );
+
+  return cached();
+}
+
 /** True when a token is configured. Surfaced in diagnostics only; the value
  *  itself never leaves the server. */
 export function hasAppToken(): boolean {

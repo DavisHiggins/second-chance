@@ -7,23 +7,29 @@ import {
   CURRENT_OUTCOMES,
   CURRENT_OUTCOME_COLUMNS,
 } from "./datasets";
-import { fetchDataset, SocrataError } from "./client.server";
+import { fetchDataset, fetchDatasetMetadata, SocrataError } from "./client.server";
 import { parseRows, shelterBuddyIntakeRow, shelterBuddyOutcomeRow } from "./schemas";
 import { buildShelterBuddyEpisodes } from "./build-episodes";
 import { buildCurrentInventory, type CurrentInventory } from "./current-inventory";
 import type { Episode } from "./types";
 import { buildDataStatus, type DataStatus } from "./status";
+import { austinNowFloating } from "./time";
 import { logEvent, logFailure } from "@/lib/observability.server";
 import { loadScoringModel } from "@/lib/model/registry.server";
 
 /**
  * The single entry point for current shelter data.
  *
- * Order matters here and is the whole point of the module: fetch, validate,
- * join, then derive. Nothing downstream is allowed to see a raw source row, so
- * there is no path by which an un-normalized field, or a found address, can
- * reach a page. If any step fails the result carries an unavailable status
- * rather than substituting stored data.
+ * The path is: Austin API → paged retrieval → schema validation → episode
+ * pairing → open-stay roster → (metrics and scoring, one level up) → cached
+ * page snapshot. Order matters and is the whole point of the module: nothing
+ * downstream is allowed to see a raw source row, so there is no path by which
+ * an un-normalized field, or a found address, can reach a page. If any step
+ * fails the result carries an unavailable status rather than substituting
+ * stored data.
+ *
+ * There is no push subscription. Austin exposes a query API; this site asks
+ * it on a bounded schedule (see `VIEW_CACHE_SECONDS`).
  */
 
 export interface CurrentShelterData {
@@ -46,25 +52,39 @@ async function loadCurrentShelterData(): Promise<CurrentShelterData> {
   const model = await loadScoringModel();
 
   try {
-    const [intakeResult, outcomeResult] = await Promise.all([
+    const [intakeResult, outcomeResult, intakeMeta, outcomeMeta] = await Promise.all([
       fetchDataset(CURRENT_INTAKES, CURRENT_INTAKE_COLUMNS),
       fetchDataset(CURRENT_OUTCOMES, CURRENT_OUTCOME_COLUMNS),
+      fetchDatasetMetadata(CURRENT_INTAKES),
+      fetchDatasetMetadata(CURRENT_OUTCOMES),
     ]);
 
     const intakes = parseRows(shelterBuddyIntakeRow, intakeResult.rows);
     const outcomes = parseRows(shelterBuddyOutcomeRow, outcomeResult.rows);
 
+    // The snapshot moment is taken as an Austin wall-clock reading so it can
+    // be compared with source rows directly. Comparing a UTC "now" against
+    // floating local rows put every wait five or six hours out.
+    const snapshotUtc = new Date();
+    const asOf = austinNowFloating(snapshotUtc.getTime());
+
     const build = buildShelterBuddyEpisodes(intakes.rows, outcomes.rows, {
+      asOf,
       rejectedIntakeRows: intakes.rejected,
       rejectedOutcomeRows: outcomes.rejected,
     });
 
-    // The feed's own `timestamp` column is when Austin last wrote the row, and
-    // is the honest answer to "how current is this", rather than when we asked.
+    // The feed's own `timestamp` column is when Austin last wrote the row. It
+    // is floating Austin time and is converted through the publisher's zone
+    // before anything compares it with a real clock.
     const intakesUpdatedAt = latestTimestamp(intakes.rows.map((row) => row.timestamp));
     const outcomesUpdatedAt = latestTimestamp(outcomes.rows.map((row) => row.timestamp));
+    const latestEventAt = latestTimestamp([
+      ...intakes.rows.map((row) => row.source_date),
+      ...outcomes.rows.map((row) => row.outcome_date),
+    ]);
 
-    const inventory = buildCurrentInventory(build, new Date().toISOString());
+    const inventory = buildCurrentInventory(build, asOf);
 
     // The join is where this product previously went wrong: the old fixture
     // reported 250 current animals of whom 218 had already gone home. These
@@ -86,15 +106,22 @@ async function loadCurrentShelterData(): Promise<CurrentShelterData> {
       staleOpen: inventory.quality.staleOpenEpisodeCount,
       intakesUpdatedAt,
       outcomesUpdatedAt,
+      intakesPublisherUpdatedAt: intakeMeta.rowsUpdatedAt,
+      outcomesPublisherUpdatedAt: outcomeMeta.rowsUpdatedAt,
       retrievedAt: intakeResult.retrievedAt,
-      asOf: inventory.asOf,
+      snapshotAt: snapshotUtc.toISOString(),
+      asOfAustin: asOf,
       scoringStatus: model.scoringStatus,
     });
 
     const status = buildDataStatus({
       intakesUpdatedAt,
       outcomesUpdatedAt,
-      retrievedAt: intakeResult.retrievedAt,
+      latestEventAt,
+      intakesPublisherUpdatedAt: intakeMeta.rowsUpdatedAt,
+      outcomesPublisherUpdatedAt: outcomeMeta.rowsUpdatedAt,
+      retrievedAt: outcomeResult.retrievedAt,
+      snapshotAt: snapshotUtc.toISOString(),
       intakeRowsRetrieved: intakes.rows.length,
       outcomeRowsRetrieved: outcomes.rows.length,
       quality: inventory.quality,
@@ -138,7 +165,7 @@ async function loadCurrentShelterData(): Promise<CurrentShelterData> {
 }
 
 /**
- * Per-request memoisation on top of the hourly data cache.
+ * Per-request memoisation on top of the view cache.
  *
  * A single page render asks for this from the layout, the header and two or
  * three sections. `cache` collapses those into one call without changing how

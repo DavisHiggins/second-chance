@@ -1,28 +1,27 @@
 import type { RiskBand } from "@/lib/model/registry.server";
+import { TRIAGE_LABEL } from "@/lib/model/horizon";
 
 /**
  * How model internals are named and coloured on screen.
  *
- * Feature names, risk bands and their colours are decided once, here, because
+ * Feature names, bands and their colours are decided once, here, because
  * the alternative is what the previous build did: each view invented its own
  * label and its own cut-off, so the same animal could read as "serious" in one
  * place and "warning" in another, and a feature was called three things on
  * three pages.
+ *
+ * Band labels come from the horizon module so the queue, the planner and the
+ * record page agree. They describe outreach triage, not urgency of care.
  *
  * This module is deliberately free of server imports so client components can
  * use it. The `RiskBand` import is a type and is erased at build time.
  */
 
 /* -------------------------------------------------------------------------- */
-/* Risk bands                                                                  */
+/* Bands                                                                       */
 /* -------------------------------------------------------------------------- */
 
-export const BAND_LABEL: Record<RiskBand, string> = {
-  critical: "Critical",
-  serious: "Serious",
-  warning: "Warning",
-  ok: "On track",
-};
+export const BAND_LABEL: Record<RiskBand, string> = TRIAGE_LABEL;
 
 export const BAND_COLOR: Record<RiskBand, string> = {
   critical: "var(--status-critical)",
@@ -36,12 +35,14 @@ export function bandTone(band: RiskBand): "good" | "warning" | "serious" | "crit
   return band === "ok" ? "good" : band;
 }
 
-/** What the band means in words, for the row that a person actually reads. */
+/** What the band meant at intake, in words. Always past tense: the estimate
+ *  was made on arrival and is not re-made as the stay goes on. */
 export const BAND_SENTENCE: Record<RiskBand, string> = {
-  critical: "Among the animals most likely to still be here in two months.",
-  serious: "More likely than most to still be here in two months.",
-  warning: "Somewhat more likely than average to wait past 60 days.",
-  ok: "No greater risk of a long stay than the shelter average.",
+  critical:
+    "At intake, among the arrivals the model rated most likely to still be here after 60 days.",
+  serious: "At intake, rated more likely than most arrivals to still be here after 60 days.",
+  warning: "At intake, rated somewhat more likely than average to wait past 60 days.",
+  ok: "At intake, rated at no greater long-stay risk than the shelter average.",
 };
 
 /* -------------------------------------------------------------------------- */
