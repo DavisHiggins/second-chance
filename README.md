@@ -265,4 +265,4 @@ this repository is MIT licensed. The structured breed reference in
 `data/reference/` was produced by a language model at temperature zero from a
 versioned prompt and is documented in `docs/06_LLM_EVALUATION.md`.
 
-**Davis Higgins**, DTSC 3601, UNC Charlotte.
+**Davis Higgins, Bennett Shearin, Seth Sumter, Hunter Pace**, DTSC 3601, UNC Charlotte.
