@@ -1,18 +1,23 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { QUEUE } from "@/lib/content";
 import { formatCount } from "@/lib/format";
-import QueueControls, { type QueueFilters, EMPTY_FILTERS } from "@/components/queue/QueueControls";
+import { LONG_STAY_HORIZON_DAYS, TRIAGE_THRESHOLDS } from "@/lib/model/horizon";
+import { usePlanPicks } from "@/lib/planPicks";
+import QueueControls, {
+  EMPTY_FILTERS,
+  type LifeStageFilter,
+  type QueueFilters,
+  type RiskFilter,
+  type SortKey,
+  type SpeciesFilter,
+} from "@/components/queue/QueueControls";
 import QueueRow from "@/components/queue/QueueRow";
 import QueueCard from "@/components/queue/QueueCard";
+import Button from "@/components/ui/Button";
 import type { InterventionChannel, ScoredStay } from "@/lib/shelter.server";
-
-const StaggerReveal = dynamic(() => import("@/components/motion/StaggerReveal"), {
-  ssr: false,
-  loading: () => null,
-});
 
 export type QueueView = "table" | "cards";
 
@@ -24,10 +29,12 @@ export type QueueView = "table" | "cards";
  * filtering in the browser is faster to use than a round trip per keystroke,
  * and it keeps the page working while the connection is poor.
  *
- * Sorting by risk is only offered when a validated model is scoring. It is not
- * disabled with a tooltip; it is absent, because a control that promises an
- * ordering the data cannot produce is worse than no control.
+ * Every filter, the sort and the view live in the URL, so a link carries the
+ * exact list and the browser's back button restores it after a record page.
+ * The scroll position is kept in session storage under the same URL, so
+ * returning from a record lands where the reader left.
  */
+
 /**
  * How many rows are rendered before the reader asks for more.
  *
@@ -38,21 +45,141 @@ export type QueueView = "table" | "cards";
  */
 const PAGE_SIZE = 50;
 
+const SPECIES: SpeciesFilter[] = ["all", "Dog", "Cat"];
+const LIFE_STAGES: LifeStageFilter[] = ["all", "juvenile", "adult", "senior", "unknown"];
+const RISKS: RiskFilter[] = ["all", "warning", "serious", "critical", "past60", "unscored"];
+const SORTS: SortKey[] = ["risk", "days", "arrival"];
+
+function pick<T extends string>(value: string | null, allowed: readonly T[], fallback: T): T {
+  return value !== null && (allowed as readonly string[]).includes(value) ? (value as T) : fallback;
+}
+
+function fromParams(params: URLSearchParams, scoring: boolean): { filters: QueueFilters; view: QueueView; shown: number } {
+  const minDays = Number(params.get("wait") ?? "0");
+  return {
+    filters: {
+      species: pick(params.get("species"), SPECIES, "all"),
+      lifeStage: pick(params.get("age"), LIFE_STAGES, "all"),
+      risk: pick(params.get("band"), RISKS, "all"),
+      minDays: Number.isFinite(minDays) && minDays > 0 ? Math.min(3650, Math.floor(minDays)) : 0,
+      hideStale: params.get("stale") === "hide",
+      search: (params.get("q") ?? "").slice(0, 80),
+      sort: pick(params.get("sort"), SORTS, scoring ? "risk" : "days"),
+    },
+    view: pick(params.get("view"), ["table", "cards"] as const, "table"),
+    shown: Math.max(PAGE_SIZE, Math.min(2000, Number(params.get("show") ?? PAGE_SIZE) || PAGE_SIZE)),
+  };
+}
+
+function toParams(filters: QueueFilters, view: QueueView, shown: number, scoring: boolean): string {
+  const params = new URLSearchParams();
+  if (filters.search.trim()) params.set("q", filters.search.trim());
+  if (filters.species !== "all") params.set("species", filters.species);
+  if (filters.lifeStage !== "all") params.set("age", filters.lifeStage);
+  if (filters.risk !== "all") params.set("band", filters.risk);
+  if (filters.minDays > 0) params.set("wait", String(filters.minDays));
+  if (filters.hideStale) params.set("stale", "hide");
+  if (filters.sort !== (scoring ? "risk" : "days")) params.set("sort", filters.sort);
+  if (view !== "table") params.set("view", view);
+  if (shown > PAGE_SIZE) params.set("show", String(shown));
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
 export function QueueClient({
   stays,
   scoring,
   channels,
   drivers,
+  initialQuery = "",
 }: {
   stays: ScoredStay[];
   scoring: boolean;
   channels: InterventionChannel[];
   drivers: { feature: string; gain: number }[];
+  /** The request's query string, from the server page, so the first fifty
+   *  rows are in the initial HTML rather than behind a client-only render. */
+  initialQuery?: string;
 }) {
-  const [filters, setFilters] = useState<QueueFilters>(EMPTY_FILTERS);
-  const [view, setView] = useState<QueueView>("table");
+  const pathname = usePathname();
+  const searchParams = useMemo(() => new URLSearchParams(initialQuery), [initialQuery]);
+  const initial = useMemo(() => fromParams(searchParams, scoring), [searchParams, scoring]);
+
+  const [filters, setFilters] = useState<QueueFilters>(initial.filters);
+  const [view, setView] = useState<QueueView>(initial.view);
+  const [shown, setShown] = useState(initial.shown);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [shown, setShown] = useState(PAGE_SIZE);
+  const picks = usePlanPicks();
+
+  // Writes state to the URL without adding history entries or a server round
+  // trip: Next integrates with the native history API, so `useSearchParams`
+  // stays in step and back/forward still moves between pages rather than
+  // between keystrokes.
+  const writeUrl = useCallback(
+    (next: QueueFilters, nextView: QueueView, nextShown: number) => {
+      const query = toParams(next, nextView, nextShown, scoring);
+      const current = window.location.search;
+      if (query !== current) window.history.replaceState(window.history.state, "", `${pathname}${query}`);
+    },
+    [pathname, scoring],
+  );
+
+  const changeFilters = (next: QueueFilters) => {
+    setFilters(next);
+    setShown(PAGE_SIZE);
+    writeUrl(next, view, PAGE_SIZE);
+  };
+  const changeView = (next: QueueView) => {
+    setView(next);
+    writeUrl(filters, next, shown);
+  };
+  const showMore = () => {
+    const next = shown + PAGE_SIZE;
+    setShown(next);
+    writeUrl(filters, view, next);
+  };
+
+  // A phone gets cards unless the URL says otherwise: a five-column table
+  // needs sideways scrolling there, and a triage list should not.
+  useEffect(() => {
+    if (searchParams.get("view") === null && window.innerWidth < 640) setView("cards");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Scroll restoration: saved under the URL on every scroll, restored once
+  // after the list has rendered on return.
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    const keyFor = () => `sc-queue-scroll:${window.location.pathname}${window.location.search}`;
+    if (!restoredRef.current) {
+      restoredRef.current = true;
+      try {
+        const saved = window.sessionStorage.getItem(keyFor());
+        if (saved) {
+          const y = Number(saved);
+          if (Number.isFinite(y) && y > 0) requestAnimationFrame(() => window.scrollTo({ top: y }));
+        }
+      } catch {
+        // Session storage unavailable: nothing to restore.
+      }
+    }
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        try {
+          window.sessionStorage.setItem(keyFor(), String(window.scrollY));
+        } catch {
+          // ignore
+        }
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(frame);
+    };
+  }, []);
 
   const visible = useMemo(() => {
     const search = filters.search.trim().toLowerCase();
@@ -61,22 +188,29 @@ export function QueueClient({
       if (filters.species !== "all" && stay.species !== filters.species) return false;
       if (filters.lifeStage !== "all" && stay.lifeStage !== filters.lifeStage) return false;
       if (filters.hideStale && stay.possiblyStale) return false;
-
       if (filters.minDays > 0 && stay.daysInCare < filters.minDays) return false;
 
-      if (filters.risk !== "all") {
-        // With no score there is no band, and an unscored animal must not be
-        // silently swept into or out of a risk filter.
-        if (stay.pLongStay60d === null) return false;
-        const floor = filters.risk === "critical" ? 0.6 : filters.risk === "serious" ? 0.4 : 0.25;
-        if (stay.pLongStay60d < floor) return false;
+      switch (filters.risk) {
+        case "past60":
+          if (stay.daysInCare <= LONG_STAY_HORIZON_DAYS) return false;
+          break;
+        case "unscored":
+          if (stay.pLongStay60d !== null) return false;
+          break;
+        case "all":
+          break;
+        default: {
+          // With no score there is no band, and an unscored animal must not
+          // be silently swept into or out of an estimate filter.
+          if (stay.pLongStay60d === null) return false;
+          if (stay.pLongStay60d < TRIAGE_THRESHOLDS[filters.risk]) return false;
+        }
       }
 
       if (search) {
         const haystack = `${stay.name ?? ""} ${stay.animalId} ${stay.breed ?? ""}`.toLowerCase();
         if (!haystack.includes(search)) return false;
       }
-
       return true;
     });
 
@@ -87,17 +221,19 @@ export function QueueClient({
       sorted.sort((a, b) => a.intakeAt.localeCompare(b.intakeAt));
     }
     // "risk" keeps the server ordering, which already handles unscored rows.
-
     return sorted;
   }, [stays, filters]);
 
-  // Narrowing the list is a new question, so it starts at the top again.
-  useEffect(() => {
-    setShown(PAGE_SIZE);
-  }, [filters]);
-
   const page = useMemo(() => visible.slice(0, shown), [visible, shown]);
   const remaining = visible.length - page.length;
+
+  const counts = useMemo(
+    () => ({
+      past60: visible.filter((s) => s.daysInCare > LONG_STAY_HORIZON_DAYS).length,
+      unscored: visible.filter((s) => s.pLongStay60d === null).length,
+    }),
+    [visible],
+  );
 
   const filtersActive =
     filters.species !== "all" ||
@@ -107,23 +243,28 @@ export function QueueClient({
     filters.hideStale ||
     filters.search.trim().length > 0;
 
+  const rowProps = { scoring, channels, drivers, picks };
+
   return (
     <div className="space-y-4">
       <QueueControls
         filters={filters}
-        onChange={setFilters}
+        onChange={changeFilters}
         view={view}
-        onViewChange={setView}
+        onViewChange={changeView}
         scoring={scoring}
         resultCount={visible.length}
+        total={stays.length}
       />
 
-      <p className="t-small" aria-live="polite" style={{ color: "var(--ink-muted)" }}>
+      <p className="t-small" aria-live="polite" style={{ color: "var(--ink-secondary)" }}>
         {visible.length > shown
           ? `Showing ${formatCount(shown)} of ${formatCount(visible.length)} matching stays, out of ${formatCount(
               stays.length,
-            )} open`
-          : `${formatCount(visible.length)} of ${formatCount(stays.length)} open stays`}
+            )} open.`
+          : `${formatCount(visible.length)} of ${formatCount(stays.length)} open stays.`}
+        {counts.past60 > 0 ? ` ${formatCount(counts.past60)} already waiting over 60 days.` : ""}
+        {scoring && counts.unscored > 0 ? ` ${formatCount(counts.unscored)} without a prediction.` : ""}
       </p>
 
       {visible.length === 0 ? (
@@ -139,57 +280,55 @@ export function QueueClient({
             {filtersActive ? QUEUE.emptyFiltered : QUEUE.emptyNoFilter}
           </p>
           {filtersActive ? (
-            <button
-              type="button"
-              onClick={() => setFilters(EMPTY_FILTERS)}
-              className="t-small mt-4 rounded-[var(--radius-md)] border px-4 py-2"
-              style={{ borderColor: "var(--border-hairline)", color: "var(--ink-primary)" }}
+            <Button
+              variant="secondary"
+              className="mt-4"
+              onClick={() => changeFilters({ ...EMPTY_FILTERS, sort: filters.sort })}
             >
               {QUEUE.clearFilters}
-            </button>
+            </Button>
           ) : null}
         </div>
       ) : view === "cards" ? (
-        <StaggerReveal key="cards" selector=":scope > ul > li" stagger={0.028} distance={12}>
-          <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {page.map((stay) => (
-              <li key={stay.episodeId}>
-                <QueueCard stay={stay} scoring={scoring} channels={channels} drivers={drivers} />
-              </li>
-            ))}
-          </ul>
-        </StaggerReveal>
+        <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {page.map((stay) => (
+            <li key={stay.episodeId}>
+              <QueueCard stay={stay} {...rowProps} />
+            </li>
+          ))}
+        </ul>
       ) : (
         <div
           className="overflow-x-auto border"
+          data-lenis-prevent=""
           style={{
             background: "var(--surface-card)",
             borderColor: "var(--border-hairline)",
             borderRadius: "var(--radius-lg)",
           }}
         >
-          <table className="w-full border-collapse">
+          <table className="w-full border-collapse" style={{ minWidth: 760 }}>
             <caption className="sr-only">
               {scoring
-                ? "Open shelter stays, ranked by estimated long-stay risk"
+                ? "Open shelter stays, ordered by intake-time long-stay estimate"
                 : "Open shelter stays, ordered by days waiting"}
             </caption>
-            <thead>
+            <thead className="sticky top-0 z-[1]" style={{ background: "var(--surface-card)" }}>
               <tr>
                 <th scope="col" className="t-caption px-4 py-3 text-left" style={headStyle}>
-                  Animal
+                  {QUEUE.columns.animal}
                 </th>
                 <th scope="col" className="t-caption px-4 py-3 text-left" style={headStyle}>
-                  Details
+                  {QUEUE.columns.details}
                 </th>
                 <th scope="col" className="t-caption px-4 py-3 text-right" style={headStyle}>
-                  Days waiting
+                  {QUEUE.columns.wait}
                 </th>
                 <th scope="col" className="t-caption px-4 py-3 text-right" style={headStyle}>
-                  {scoring ? "Long-stay risk" : "Status"}
+                  {scoring ? QUEUE.columns.estimate : QUEUE.columns.status}
                 </th>
-                <th scope="col" className="px-4 py-3">
-                  <span className="sr-only">Actions</span>
+                <th scope="col" className="t-caption px-4 py-3 text-right" style={headStyle}>
+                  {QUEUE.columns.actions}
                 </th>
               </tr>
             </thead>
@@ -198,9 +337,7 @@ export function QueueClient({
                 <QueueRow
                   key={stay.episodeId}
                   stay={stay}
-                  scoring={scoring}
-                  channels={channels}
-                  drivers={drivers}
+                  {...rowProps}
                   expanded={expanded === stay.episodeId}
                   onToggle={() =>
                     setExpanded((current) => (current === stay.episodeId ? null : stay.episodeId))
@@ -214,21 +351,12 @@ export function QueueClient({
 
       {remaining > 0 ? (
         <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={() => setShown((current) => current + PAGE_SIZE)}
-            className="t-small rounded-[var(--radius-md)] border px-4 py-2.5 font-medium"
-            style={{
-              borderColor: "var(--border-hairline)",
-              background: "var(--surface-card)",
-              color: "var(--ink-primary)",
-            }}
-          >
+          <Button variant="secondary" onClick={showMore}>
             {`Show ${formatCount(Math.min(PAGE_SIZE, remaining))} more`}
-            <span className="t-caption ml-2" style={{ color: "var(--ink-muted)" }}>
+            <span className="t-caption ml-2 font-normal" style={{ color: "var(--ink-muted)" }}>
               {`${formatCount(remaining)} still to review`}
             </span>
-          </button>
+          </Button>
         </div>
       ) : null}
     </div>

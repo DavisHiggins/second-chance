@@ -8,21 +8,33 @@ import {
 import { loadScoringModel } from "@/lib/model/registry.server";
 import { QUEUE } from "@/lib/content";
 import { formatCount } from "@/lib/format";
-import PageMotion, { MotionChild } from "@/components/shell/PageMotion";
+import { TRIAGE_DEFINITION } from "@/lib/model/horizon";
 import UsePolicyBanner from "@/components/shell/UsePolicyBanner";
 import QueueClient from "@/components/queue/QueueClient";
 import { DataUnavailable, ScoringNotice } from "@/components/shell/StateNotices";
+import Disclosure from "@/components/ui/Disclosure";
 
-export const revalidate = 3600;
+export const revalidate = 1800;
 
 export const metadata: Metadata = {
-  title: "Needs attention",
+  title: "Animals that may need extra support",
   description:
-    "Open shelter stays ranked by estimated long-stay risk, so staff attention goes where it may change an outcome.",
+    "Open shelter stays with intake-time long-stay estimates beside actual waiting times, so staff attention goes where it may change an outcome.",
 };
 
-export default async function QueuePage() {
-  const [view, model] = await Promise.all([getShelterView(), loadScoringModel()]);
+type Search = Promise<Record<string, string | string[] | undefined>>;
+
+function toQuery(search: Record<string, string | string[] | undefined>): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(search)) {
+    const first = Array.isArray(value) ? value[0] : value;
+    if (first !== undefined) params.set(key, first);
+  }
+  return params.toString();
+}
+
+export default async function QueuePage({ searchParams }: { searchParams: Search }) {
+  const [view, model, search] = await Promise.all([getShelterView(), loadScoringModel(), searchParams]);
 
   if (!view.status.retrievedAt) {
     return <DataUnavailable problem={view.status.problem} />;
@@ -33,37 +45,40 @@ export default async function QueuePage() {
   const channels = getInterventionChannels();
 
   return (
-    <PageMotion className="space-y-6">
-      <MotionChild index={0}>
-        <h1 className="t-display" style={{ color: "var(--ink-primary)" }}>
+    <div className="space-y-6">
+      <header>
+        <p className="t-overline" style={{ color: "var(--accent-strong)" }}>
+          Needs attention
+        </p>
+        <h1 className="t-display mt-2" style={{ color: "var(--ink-primary)" }}>
           {QUEUE.title}
         </h1>
-        <p className="t-body mt-2 max-w-[70ch]" style={{ color: "var(--ink-secondary)" }}>
+        <p className="t-body mt-3 max-w-[68ch]" style={{ color: "var(--ink-secondary)" }}>
           {scoring ? QUEUE.subtitleScored : QUEUE.subtitleDescriptive}
         </p>
         <p className="t-small mt-2" style={{ color: "var(--ink-muted)" }}>
-          {`${formatCount(ordered.length)} open stays.`}
+          {`${formatCount(ordered.length)} open stays as of the current snapshot.`}
         </p>
-      </MotionChild>
+        {scoring ? (
+          <Disclosure summary="How the estimate bands work" className="mt-2">
+            <p className="t-small max-w-[68ch]" style={{ color: "var(--ink-secondary)" }}>
+              {TRIAGE_DEFINITION}
+            </p>
+          </Disclosure>
+        ) : null}
+      </header>
 
-      <MotionChild index={1}>
-        <UsePolicyBanner />
-      </MotionChild>
+      <UsePolicyBanner />
 
-      {!scoring ? (
-        <MotionChild index={2}>
-          <ScoringNotice note={model.note} />
-        </MotionChild>
-      ) : null}
+      {!scoring ? <ScoringNotice note={model.note} /> : null}
 
-      <MotionChild index={3}>
-        <QueueClient
-          stays={ordered}
-          scoring={scoring}
-          channels={channels}
-          drivers={view.modelDrivers}
-        />
-      </MotionChild>
-    </PageMotion>
+      <QueueClient
+        stays={ordered}
+        scoring={scoring}
+        channels={channels}
+        drivers={view.modelDrivers}
+        initialQuery={toQuery(search)}
+      />
+    </div>
   );
 }

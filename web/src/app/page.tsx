@@ -1,10 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { getShelterView, hasLiveScoring, needsAttentionNow } from "@/lib/shelter.server";
 import { loadScoringModel } from "@/lib/model/registry.server";
 import { DASHBOARD } from "@/lib/content";
-import { formatCount, formatNumber, formatPercent } from "@/lib/format";
-import PageMotion, { MotionChild } from "@/components/shell/PageMotion";
+import { formatCount, formatMonth, formatNumber, formatPercent } from "@/lib/format";
 import UsePolicyBanner from "@/components/shell/UsePolicyBanner";
 import Card from "@/components/ui/Card";
 import StatTile, { type StatTileData } from "@/components/dashboard/StatTile";
@@ -14,11 +14,19 @@ import SegmentBars from "@/components/dashboard/SegmentBars";
 import ModelHealthPanel, { type ModelHealthRow } from "@/components/dashboard/ModelHealthPanel";
 import { DataUnavailable, ScoringNotice } from "@/components/shell/StateNotices";
 import DashboardHero from "@/components/dashboard/DashboardHero";
+import ContextStrip from "@/components/dashboard/ContextStrip";
 import NeedsAttention from "@/components/dashboard/NeedsAttention";
+import AnimatedDivider from "@/components/motion/AnimatedDivider";
+import RevealSection, { RevealItem } from "@/components/motion/RevealSection";
 import type { StatusTone } from "@/components/ui/Status";
 
-/** Austin publishes hourly; there is nothing to gain from asking more often. */
-export const revalidate = 3600;
+export const revalidate = 1800;
+
+// The root page shares the root layout's segment, so the layout's title
+// template does not apply to it; the suffix is written out here.
+export const metadata: Metadata = {
+  title: { absolute: `${DASHBOARD.pageTitle} · SecondChance` },
+};
 
 function healthRows(
   test: { rocAuc: number | null; ece: number | null; brier: number | null },
@@ -37,17 +45,17 @@ function healthRows(
   return [
     {
       id: "discrimination",
-      label: "Discrimination",
-      display: auc === null ? "" : `AUC ${auc.toFixed(3)}`,
+      label: "Discrimination (ROC AUC)",
+      display: auc === null ? "" : auc.toFixed(3),
       tone: tone(auc, 0.7, 0.62, true),
-      note: "How well the model ranks a long stay above a short one, on the held-out block.",
+      note: "How often the model ranks a long stay above a short one, on the held-out block. 0.5 is chance.",
     },
     {
       id: "calibration",
-      label: "Calibration error",
-      display: ece === null ? "" : `ECE ${ece.toFixed(3)}`,
+      label: "Calibration error (ECE)",
+      display: ece === null ? "" : ece.toFixed(3),
       tone: tone(ece, 0.04, 0.08, false),
-      note: "How far a stated percentage sits from what actually happened. A model can rank well and still say the wrong number.",
+      note: "Average gap between stated and observed rates, in probability points. A model can rank well and still say the wrong number.",
     },
     {
       id: "version",
@@ -61,7 +69,7 @@ function healthRows(
       label: "Trained",
       display: trainedAt ? trainedAt.slice(0, 10) : "",
       tone: "good",
-      note: "The moment training actually ran against the current ShelterBuddy feeds.",
+      note: "The moment training ran against the current ShelterBuddy feeds. It changes only after a documented retrain.",
     },
   ];
 }
@@ -70,152 +78,185 @@ export default async function DashboardPage() {
   const [view, model] = await Promise.all([getShelterView(), loadScoringModel()]);
 
   if (!view.status.retrievedAt || view.stays.length === 0) {
-    return (
-      <PageMotion className="space-y-6">
-        <MotionChild index={0}>
-          <DataUnavailable problem={view.status.problem} />
-        </MotionChild>
-      </PageMotion>
-    );
+    return <DataUnavailable problem={view.status.problem} />;
   }
 
   const scoring = hasLiveScoring(view);
   const { metrics } = view;
 
-  const adoptionsSpark = view.trends.slice(-12).map((m) => m.adoptions);
-  const intakesSpark = view.trends.slice(-12).map((m) => m.intakes);
-  const medianSpark = view.trends
-    .slice(-12)
-    .map((m) => m.medianDaysToAdoption)
-    .filter((v): v is number => v !== null);
+  const recent = view.trends.slice(-12);
+  const intakesSpark = recent.map((m) => ({ label: formatMonth(m.month), value: m.intakes, partial: m.partial }));
+  const medianSpark = recent
+    .filter((m) => m.medianDaysToAdoption !== null)
+    .map((m) => ({ label: formatMonth(m.month), value: m.medianDaysToAdoption as number, partial: m.partial }));
+  // Only months whose arrivals have had a full 30 days contribute a rate, so
+  // the spark is comparable with the tile: same unit, same eligibility rule.
+  const rateSpark = recent
+    .filter((m) => m.adoptedWithin30dRate !== null)
+    .map((m) => ({ label: formatMonth(m.month), value: (m.adoptedWithin30dRate as number) * 100 }));
 
   const tiles: StatTileData[] = [
     {
       id: "in-care",
+      metricId: "open-stays",
       label: DASHBOARD.tiles.census,
       display: formatCount(metrics.animalsInCare.value),
       countTo: metrics.animalsInCare.value,
       unit: "stays",
       spark: intakesSpark,
-      sampleSize: null,
-      footnote: "Inferred from open intake records. Not a roster of adoptable animals.",
+      sparkLabel: "Monthly intakes, last 12 months",
+      sampleLine: null,
+      footnote: "Open intake records at the snapshot. Not a roster of adoptable animals.",
     },
     {
       id: "median-days",
+      metricId: "median-days-to-adoption",
       label: DASHBOARD.tiles.medianDays,
-      // The tile renders its own unit, so the value is the bare number here.
       display:
-        metrics.medianDaysToAdoption.value === null
-          ? null
-          : formatNumber(metrics.medianDaysToAdoption.value, 0),
+        metrics.medianDaysToAdoption.value === null ? null : formatNumber(metrics.medianDaysToAdoption.value, 0),
       unit: "days",
       spark: medianSpark,
-      sampleSize: metrics.medianDaysToAdoption.n,
-      footnote: "Adoptions only. Transfers and returns to owner are excluded.",
+      sparkLabel: "Monthly median, by adoption month",
+      sampleLine: `Based on ${formatCount(metrics.medianDaysToAdoption.n)} adoptions`,
+      footnote: "Adopted animals only, stays begun in the last twelve months.",
     },
     {
       id: "adopted-30",
+      metricId: "adopted-within-30d",
       label: DASHBOARD.tiles.adoptionRate,
-      display:
-        metrics.adoptedWithin30d.value === null ? null : formatPercent(metrics.adoptedWithin30d.value),
-      unit: "of arrivals",
-      spark: adoptionsSpark,
-      sampleSize: metrics.adoptedWithin30d.n,
-      footnote: "Stays too recent to have had a full 30 days are excluded, not counted as failures.",
+      display: metrics.adoptedWithin30d.value === null ? null : formatPercent(metrics.adoptedWithin30d.value),
+      unit: "of eligible arrivals",
+      spark: rateSpark,
+      sparkLabel: "Monthly rate (%), by arrival month",
+      sampleLine: `Based on ${formatCount(metrics.adoptedWithin30d.n)} arrivals`,
+      footnote: "Arrivals too recent for a full 30 days are excluded, not counted as failures.",
     },
     {
       id: "long-stay",
+      metricId: "long-stay-observed",
       label: DASHBOARD.tiles.longStay,
-      display:
-        metrics.observedLongStay.value === null ? null : formatPercent(metrics.observedLongStay.value),
+      display: metrics.observedLongStay.value === null ? null : formatPercent(metrics.observedLongStay.value),
       unit: "of completed stays",
       spark: [],
-      sampleSize: metrics.observedLongStay.n,
-      footnote: "What was observed, not what the model predicts.",
+      sparkLabel: null,
+      sampleLine: `Based on ${formatCount(metrics.observedLongStay.n)} completed stays`,
+      footnote: "What was observed in completed history, not what the model predicts.",
     },
   ];
 
   const attention = needsAttentionNow(view, 5);
 
   return (
-    <PageMotion className="space-y-8">
-      <MotionChild index={0}>
-        <DashboardHero
-          openStays={metrics.animalsInCare.value}
-          mode={view.status.mode}
-          updatedAt={view.status.intakesUpdatedAt}
-        />
-      </MotionChild>
+    <div className="space-y-8">
+      <DashboardHero openStays={metrics.animalsInCare.value} mode={view.status.mode} />
 
-      <MotionChild index={1}>
-        <UsePolicyBanner />
-      </MotionChild>
+      <ContextStrip status={view.status} window={view.window} />
 
-      {!scoring ? (
-        <MotionChild index={2}>
-          <ScoringNotice note={model.note} />
-        </MotionChild>
-      ) : null}
+      <UsePolicyBanner />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {!scoring ? <ScoringNotice note={model.note} /> : null}
+
+      <AnimatedDivider number="01" label={DASHBOARD.sections.overview} id="overview" />
+
+      <RevealSection as="div" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Headline figures">
         {tiles.map((tile, index) => (
-          <MotionChild key={tile.id} index={3 + index} className="h-full">
+          <RevealItem key={tile.id} index={index} className="h-full">
             <StatTile tile={tile} />
-          </MotionChild>
+          </RevealItem>
         ))}
-      </div>
+      </RevealSection>
 
       {scoring && attention.length > 0 ? (
-        <MotionChild index={7}>
-          <NeedsAttention stays={attention} />
-        </MotionChild>
+        <>
+          <AnimatedDivider number="02" label={DASHBOARD.sections.attention} id="attention" />
+          <RevealSection as="div">
+            <RevealItem>
+              <NeedsAttention stays={attention} />
+            </RevealItem>
+          </RevealSection>
+        </>
       ) : null}
 
-      <MotionChild index={8}>
-        <Card style={{ padding: "var(--card-padding)" }}>
-          <TrendChart months={view.trends} />
-        </Card>
-      </MotionChild>
+      <AnimatedDivider number={scoring && attention.length > 0 ? "03" : "02"} label={DASHBOARD.sections.trends} id="trends" />
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <MotionChild index={9} className="h-full">
-          <Card className="h-full" style={{ padding: "var(--card-padding)" }}>
-            <SegmentBars segments={view.segments} />
+      <RevealSection as="div" className="space-y-4">
+        <RevealItem>
+          <Card style={{ padding: "var(--card-padding)" }}>
+            <TrendChart months={view.trends} />
           </Card>
-        </MotionChild>
-        <MotionChild index={10} className="h-full">
-          <Card className="h-full" style={{ padding: "var(--card-padding)" }}>
-            <OutcomeMixChart mix={metrics.outcomes.value} total={metrics.outcomes.n} />
+        </RevealItem>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <RevealItem index={1} className="h-full">
+            <Card className="h-full" style={{ padding: "var(--card-padding)" }}>
+              <SegmentBars segments={view.segments} />
+            </Card>
+          </RevealItem>
+          <RevealItem index={2} className="h-full">
+            <Card className="h-full" style={{ padding: "var(--card-padding)" }}>
+              <OutcomeMixChart mix={metrics.outcomes.value} total={metrics.outcomes.n} />
+            </Card>
+          </RevealItem>
+        </div>
+      </RevealSection>
+
+      <AnimatedDivider number={scoring && attention.length > 0 ? "04" : "03"} label={DASHBOARD.sections.model} id="model-context" />
+
+      <RevealSection as="div">
+        <RevealItem>
+          <Card style={{ padding: "var(--card-padding)" }}>
+            <ModelHealthPanel
+              rows={
+                model.artifact
+                  ? healthRows(model.artifact.targets.long_stay_60d.test, model.trainedAt, model.version)
+                  : []
+              }
+              scoringStatus={view.scoringStatus}
+              summary={DASHBOARD.healthSummary}
+            />
           </Card>
-        </MotionChild>
-      </div>
+        </RevealItem>
+      </RevealSection>
 
-      <MotionChild index={11}>
-        <Card style={{ padding: "var(--card-padding)" }}>
-          <ModelHealthPanel
-            rows={
-              model.artifact
-                ? healthRows(
-                    model.artifact.targets.long_stay_60d.test,
-                    model.trainedAt,
-                    model.version,
-                  )
-                : []
-            }
-            scoringStatus={view.scoringStatus}
-          />
-        </Card>
-      </MotionChild>
+      <AnimatedDivider number={scoring && attention.length > 0 ? "05" : "04"} label={DASHBOARD.sections.workflow} id="workflow" />
 
-      <MotionChild index={12}>
-        <p className="t-small" style={{ color: "var(--ink-muted)" }}>
+      <RevealSection as="div">
+        <h2 className="t-title" style={{ color: "var(--ink-primary)" }}>
+          {DASHBOARD.workflowTitle}
+        </h2>
+        <ol className="mt-4 grid gap-4 md:grid-cols-3">
+          {DASHBOARD.workflowSteps.map((step, index) => (
+            <RevealItem key={step.title} as="li" index={index} className="h-full">
+              <Card className="h-full" style={{ padding: "var(--space-5)" }}>
+                <p className="t-caption tabular" style={{ color: "var(--accent-strong)" }}>
+                  {`Step ${index + 1}`}
+                </p>
+                <h3 className="t-subtitle mt-1" style={{ color: "var(--ink-primary)" }}>
+                  {step.title}
+                </h3>
+                <p className="t-small mt-2" style={{ color: "var(--ink-secondary)" }}>
+                  {step.body}
+                </p>
+                {step.href === "/" ? (
+                  <p className="t-small mt-3" style={{ color: "var(--ink-muted)" }}>
+                    {step.cta}
+                  </p>
+                ) : (
+                  <Link href={step.href} className="t-small link-reveal mt-3 inline-flex items-center gap-1">
+                    {step.cta}
+                    <ArrowRight size={14} strokeWidth={1.5} aria-hidden="true" />
+                  </Link>
+                )}
+              </Card>
+            </RevealItem>
+          ))}
+        </ol>
+        <p className="t-small mt-6" style={{ color: "var(--ink-muted)" }}>
           {DASHBOARD.openStaysNote}{" "}
-          <Link href="/impact" className="underline underline-offset-2" style={{ color: "var(--accent-strong)" }}>
+          <Link href="/impact" className="link-reveal">
             Why this distinction matters
           </Link>
-          <ArrowRight size={13} strokeWidth={1.5} aria-hidden="true" className="ml-1 inline" />
         </p>
-      </MotionChild>
-    </PageMotion>
+      </RevealSection>
+    </div>
   );
 }

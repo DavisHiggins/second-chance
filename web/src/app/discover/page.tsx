@@ -5,10 +5,10 @@ import { formatCount } from "@/lib/format";
 import DiscoverGrid from "@/components/discover/DiscoverGrid";
 import { DataUnavailable } from "@/components/shell/StateNotices";
 
-export const revalidate = 3600;
+export const revalidate = 1800;
 
 export const metadata: Metadata = {
-  title: "Current shelter records",
+  title: DISCOVER.title,
   description:
     "Cats and dogs with an open intake record in the City of Austin's public feed, longest wait first.",
 };
@@ -16,16 +16,26 @@ export const metadata: Metadata = {
 /**
  * The human-facing view of the current records.
  *
- * The previous version of this page was titled "Meet the ones who have been
- * waiting" and told the reader that "every one of them is ready to go home
- * today". Neither claim was supportable. Austin publishes intake and outcome
- * events; it publishes no adoptable-listing dataset, so nothing in this
- * product can confirm that any particular animal is available. The page now
- * says what the data actually is, and the accuracy note sits above the grid
- * rather than in a footnote.
+ * Austin publishes intake and outcome events; it publishes no adoptable-
+ * listing dataset, so nothing in this product can confirm that any
+ * particular animal is available. The page says what the data actually is,
+ * and the accuracy note sits above the grid rather than in a footnote. The
+ * grid's first batch is server-rendered so the records are in the initial
+ * HTML and readable before any script runs.
  */
-export default async function DiscoverPage() {
-  const view = await getShelterView();
+type Search = Promise<Record<string, string | string[] | undefined>>;
+
+function toQuery(search: Record<string, string | string[] | undefined>): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(search)) {
+    const first = Array.isArray(value) ? value[0] : value;
+    if (first !== undefined) params.set(key, first);
+  }
+  return params.toString();
+}
+
+export default async function DiscoverPage({ searchParams }: { searchParams: Search }) {
+  const [view, search] = await Promise.all([getShelterView(), searchParams]);
 
   if (!view.status.retrievedAt) {
     return <DataUnavailable problem={view.status.problem} />;
@@ -34,7 +44,10 @@ export default async function DiscoverPage() {
   return (
     <div className="space-y-8">
       <header className="max-w-[70ch]">
-        <h1 className="t-display" style={{ color: "var(--ink-primary)" }}>
+        <p className="t-overline" style={{ color: "var(--accent-strong)" }}>
+          Shelter records
+        </p>
+        <h1 className="t-display mt-2" style={{ color: "var(--ink-primary)" }}>
           {DISCOVER.title}
         </h1>
         <p className="t-body mt-3" style={{ color: "var(--ink-secondary)" }}>
@@ -59,7 +72,7 @@ export default async function DiscoverPage() {
         </div>
       </header>
 
-      <DiscoverGrid stays={toPublicStays(view.stays)} />
+      <DiscoverGrid stays={toPublicStays(view.stays)} initialQuery={toQuery(search)} />
     </div>
   );
 }

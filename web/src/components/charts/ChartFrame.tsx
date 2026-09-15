@@ -24,6 +24,8 @@ export function ChartFrame({
   height,
   children,
   action,
+  note,
+  headingLevel = "h2",
 }: {
   title: string;
   subtitle?: string;
@@ -33,7 +35,11 @@ export function ChartFrame({
   height: number;
   children: ReactNode;
   action?: ReactNode;
+  /** One sentence beneath the chart on how to read it. */
+  note?: string;
+  headingLevel?: "h2" | "h3";
 }) {
+  const Heading = headingLevel;
   const [showTable, setShowTable] = useState(false);
   const headingId = useId();
 
@@ -41,9 +47,9 @@ export function ChartFrame({
     <div>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="t-title" id={headingId} style={{ color: "var(--ink-primary)" }}>
+          <Heading className="t-title" id={headingId} style={{ color: "var(--ink-primary)" }}>
             {title}
-          </h2>
+          </Heading>
           {subtitle ? (
             <p className="t-small mt-1 max-w-prose" style={{ color: "var(--ink-secondary)" }}>
               {subtitle}
@@ -56,7 +62,7 @@ export function ChartFrame({
             type="button"
             onClick={() => setShowTable((value) => !value)}
             aria-pressed={showTable}
-            className="t-caption inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border px-2.5 py-1.5"
+            className="t-caption inline-flex min-h-[36px] items-center gap-1.5 rounded-[var(--radius-md)] border px-2.5"
             style={{
               borderColor: "var(--border-hairline)",
               background: "var(--surface-card)",
@@ -78,7 +84,7 @@ export function ChartFrame({
       {/* The height is reserved either way, so switching views shifts nothing. */}
       <div className="mt-4" style={{ minHeight: height }}>
         {showTable ? (
-          <div className="overflow-x-auto" style={{ maxHeight: height + 40 }}>
+          <div className="overflow-x-auto" style={{ maxHeight: height + 40 }} data-lenis-prevent="">
             <table className="w-full border-collapse">
               <caption className="t-caption pb-2 text-left" style={{ color: "var(--ink-muted)" }}>
                 {table.caption}
@@ -129,6 +135,12 @@ export function ChartFrame({
           </div>
         )}
       </div>
+
+      {note ? (
+        <p className="t-caption mt-3 max-w-prose" style={{ color: "var(--ink-muted)" }}>
+          {note}
+        </p>
+      ) : null}
     </div>
   );
 }

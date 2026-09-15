@@ -2,14 +2,17 @@
 
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
-import { formatCount, formatLabel, formatMetric, formatPercent, formatSigned, NOT_MEASURED } from "@/lib/format";
+import { formatCount, formatLabel, formatMetric, formatPercent, formatPp, NOT_MEASURED } from "@/lib/format";
 import { StatusIcon } from "@/components/ui/Status";
 import type { SubgroupMetric } from "@/lib/model/artifact";
 
-type SortKey = "attribute" | "level" | "n" | "rocAuc" | "calibrationGap";
+type SortKey = "attribute" | "level" | "n" | "positiveRate" | "rocAuc" | "calibrationGap";
 
 /** A gap this wide is worth flagging on screen rather than leaving to be found. */
 const GAP_FLAG = 0.04;
+
+/** Below this many stays a gap is reported but not judged. */
+const SMALL_GROUP = 100;
 
 export function SubgroupTable({ rows, sample }: { rows: SubgroupMetric[]; sample: string }) {
   const [sortKey, setSortKey] = useState<SortKey>("attribute");
@@ -35,14 +38,15 @@ export function SubgroupTable({ rows, sample }: { rows: SubgroupMetric[]; sample
   const columns: Array<{ key: SortKey; label: string; numeric: boolean }> = [
     { key: "attribute", label: "Attribute", numeric: false },
     { key: "level", label: "Level", numeric: false },
-    { key: "n", label: "Animals", numeric: true },
+    { key: "n", label: "Stays", numeric: true },
+    { key: "positiveRate", label: "Observed rate", numeric: true },
     { key: "rocAuc", label: "AUC", numeric: true },
-    { key: "calibrationGap", label: "Calibration gap", numeric: true },
+    { key: "calibrationGap", label: "Predicted − observed", numeric: true },
   ];
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse">
+    <div className="overflow-x-auto" data-lenis-prevent="">
+      <table className="w-full border-collapse" style={{ minWidth: 640 }}>
         <caption className="t-small pb-3 text-left" style={{ color: "var(--ink-secondary)" }}>
           {sample}
         </caption>
@@ -98,6 +102,7 @@ export function SubgroupTable({ rows, sample }: { rows: SubgroupMetric[]; sample
         <tbody>
           {sorted.map((row) => {
             const gap = row.calibrationGap;
+            const small = row.n < SMALL_GROUP;
             const flagged = gap !== null && Math.abs(gap) > GAP_FLAG;
             return (
               <tr key={`${row.attribute}-${row.level}`}>
@@ -127,27 +132,35 @@ export function SubgroupTable({ rows, sample }: { rows: SubgroupMetric[]; sample
                   className="t-small tabular border-b px-2 text-right"
                   style={{ borderColor: "var(--border-hairline)", color: "var(--ink-secondary)" }}
                 >
+                  {formatPercent(row.positiveRate, 1)}
+                </td>
+                <td
+                  className="t-small tabular border-b px-2 text-right"
+                  style={{ borderColor: "var(--border-hairline)", color: "var(--ink-secondary)" }}
+                >
                   {row.rocAuc === null ? NOT_MEASURED : formatMetric(row.rocAuc)}
                 </td>
                 <td
                   className="t-small tabular border-b px-2 text-right"
                   style={{ borderColor: "var(--border-hairline)", color: "var(--ink-secondary)" }}
                 >
-                  {gap === null ? NOT_MEASURED : formatSigned(gap, 3)}
+                  {gap === null ? NOT_MEASURED : formatPp(gap, 1)}
                 </td>
                 <td
                   className="t-caption border-b px-2"
                   style={{ borderColor: "var(--border-hairline)", color: "var(--ink-secondary)" }}
                 >
-                  {flagged ? (
+                  {small ? (
+                    <span style={{ color: "var(--ink-muted)" }}>{`Small group (${formatCount(row.n)}); uncertainty not estimated`}</span>
+                  ) : flagged ? (
                     <span className="inline-flex items-center gap-1.5">
                       <StatusIcon tone="warning" size={14} />
                       {gap !== null && gap > 0
-                        ? `Over-predicts by ${formatPercent(Math.abs(gap), 1)}`
-                        : `Under-predicts by ${formatPercent(Math.abs(gap ?? 0), 1)}`}
+                        ? `Over-predicts by ${formatPp(gap, 1)}`
+                        : `Under-predicts by ${formatPp(Math.abs(gap ?? 0), 1)}`}
                     </span>
                   ) : (
-                    <span style={{ color: "var(--ink-muted)" }}>—</span>
+                    <span style={{ color: "var(--ink-muted)" }}>Within 4 points</span>
                   )}
                 </td>
               </tr>

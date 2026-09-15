@@ -24,7 +24,9 @@ const LABELS: Record<string, string> = {
  * reason, and hiding the row would hide how many of them there are.
  */
 export function SegmentBars({ segments }: { segments: SegmentRow[] }) {
-  const rows = segments.filter((row) => row.n >= 20);
+  // A median over fewer than twenty adoptions moves when a handful of
+  // records change, so those rows are listed in the table but not drawn.
+  const rows = segments.filter((row) => row.adopted >= 20);
 
   if (rows.length === 0) {
     return (
@@ -42,10 +44,10 @@ export function SegmentBars({ segments }: { segments: SegmentRow[] }) {
         `${LABELS[row.level] ?? row.level}: ${
           row.medianDaysToAdoption === null
             ? "not measured"
-            : `${row.medianDaysToAdoption.toFixed(0)} days`
+            : `${row.medianDaysToAdoption.toFixed(0)} days, based on ${row.adopted} adoptions`
         }`,
     )
-    .join(", ");
+    .join("; ");
 
   return (
     <ChartFrame
@@ -53,11 +55,13 @@ export function SegmentBars({ segments }: { segments: SegmentRow[] }) {
       subtitle={DASHBOARD.segmentsSubtitle}
       summary={summary}
       height={190}
+      note="The median counts adopted animals only; the adoption share divides adoptions by all completed stays. A short median can sit beside a low share. Life stage is age at intake; the archive study used a different era and metric, so its ranking can differ."
       table={{
-        caption: "Observed median days to adoption by life stage",
-        columns: ["Life stage", "Completed stays", "Median days", "Share adopted"],
-        rows: rows.map((row) => [
+        caption: "Observed median days to adoption by life stage at intake, stays begun in the last twelve months",
+        columns: ["Life stage", "Adoptions (median sample)", "Completed stays", "Median days", "Share adopted"],
+        rows: segments.map((row) => [
           LABELS[row.level] ?? row.level,
+          row.adopted,
           row.n,
           row.medianDaysToAdoption === null ? NOT_MEASURED : row.medianDaysToAdoption.toFixed(1),
           row.adoptionShare === null ? NOT_MEASURED : formatPercent(row.adoptionShare),
@@ -76,7 +80,7 @@ export function SegmentBars({ segments }: { segments: SegmentRow[] }) {
                 <span className="t-small tabular" style={{ color: "var(--ink-secondary)" }}>
                   {days === null ? NOT_MEASURED : `${days.toFixed(0)} days`}
                   <span className="t-caption ml-2" style={{ color: "var(--ink-muted)" }}>
-                    {`n = ${row.n.toLocaleString("en-US")}`}
+                    {`based on ${row.adopted.toLocaleString("en-US")} adoptions`}
                   </span>
                 </span>
               </div>

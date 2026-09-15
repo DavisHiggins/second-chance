@@ -58,6 +58,7 @@ export function OutcomeMixChart({ mix, total }: { mix: OutcomeMix[]; total: numb
       subtitle={DASHBOARD.outcomesSubtitle}
       summary={`Of ${total.toLocaleString("en-US")} completed stays: ${summary}.`}
       height={200}
+      note="Each share is that outcome divided by completed stays that began in the window. Transfer is not adoption; open stays have no outcome yet and are not included."
       table={{
         caption: "Completed cat and dog stays by outcome",
         columns: ["Outcome", "Stays", "Share"],
