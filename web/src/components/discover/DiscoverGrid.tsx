@@ -8,7 +8,7 @@ import { DISCOVER } from "@/lib/content";
 import { formatAge, formatCount, formatDate } from "@/lib/format";
 import MonogramTile from "@/components/ui/MonogramTile";
 import Button from "@/components/ui/Button";
-import RevealSection, { RevealItem } from "@/components/motion/RevealSection";
+import { RevealItem } from "@/components/motion/RevealSection";
 import type { PublicStay } from "@/lib/shelter.server";
 
 type SpeciesFilter = "all" | "Dog" | "Cat";
@@ -35,9 +35,9 @@ const WAITS: [WaitFilter, string][] = [
   ["180", "180+ days"],
 ];
 
-/** How many cards render before "Show more". Server-rendered, so the first
- *  batch is in the initial HTML. */
-const BATCH = 24;
+/** How many cards render per batch. The first batch is server-rendered, so
+ *  it is in the initial HTML; each press of "Show more" appends one more. */
+const BATCH = 100;
 
 interface Filters {
   q: string;
@@ -91,7 +91,7 @@ export function DiscoverGrid({ stays, initialQuery = "" }: { stays: PublicStay[]
     [params],
   );
   const [filters, setFilters] = useState<Filters>(initial);
-  const [shown, setShown] = useState(Math.max(BATCH, Math.min(1000, Number(params.get("show") ?? BATCH) || BATCH)));
+  const [shown, setShown] = useState(Math.max(BATCH, Math.min(2000, Number(params.get("show") ?? BATCH) || BATCH)));
 
   const write = useCallback(
     (next: Filters, nextShown: number) => {
@@ -187,13 +187,16 @@ export function DiscoverGrid({ stays, initialQuery = "" }: { stays: PublicStay[]
           {DISCOVER.empty}
         </p>
       ) : (
-        <RevealSection as="ul" className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" amount={0.05}>
+        <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {/* Each card reveals on its own as it enters the viewport, so a
+              batch appended by "Show more" fades in exactly like the first.
+              The stagger restarts with every batch. */}
           {page.map((stay, index) => (
-            <RevealItem key={stay.episodeId} as="li" index={index}>
+            <RevealItem key={stay.episodeId} as="li" index={index % BATCH} standalone>
               <StayCard stay={stay} />
             </RevealItem>
           ))}
-        </RevealSection>
+        </ul>
       )}
 
       {visible.length > page.length ? (
@@ -208,7 +211,9 @@ export function DiscoverGrid({ stays, initialQuery = "" }: { stays: PublicStay[]
           >
             {DISCOVER.showMore}
             <span className="t-caption ml-2 font-normal" style={{ color: "var(--ink-muted)" }}>
-              {`${formatCount(visible.length - page.length)} more`}
+              {`next ${formatCount(Math.min(BATCH, visible.length - page.length))} of ${formatCount(
+                visible.length - page.length,
+              )} more`}
             </span>
           </Button>
         </div>

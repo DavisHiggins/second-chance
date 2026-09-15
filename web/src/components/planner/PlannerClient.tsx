@@ -338,9 +338,16 @@ export function PlannerClient({
                     {channel.evidence_detail}
                   </p>
 
-                  <div className="mt-3 overflow-x-auto" data-lenis-prevent="">
-                    <table className="w-full border-collapse" style={{ minWidth: 720 }}>
+                  <div className="mt-3 overflow-x-auto">
+                    <table className="w-full border-collapse" style={{ minWidth: 960, tableLayout: "fixed" }}>
                       <caption className="sr-only">{`Animals assigned to ${channel.label}`}</caption>
+                      {/* Fixed column widths so every channel's table lines up
+                          with the one above it instead of each sizing itself. */}
+                      <colgroup>
+                        {PLAN_COLUMNS.map((width, index) => (
+                          <col key={index} style={{ width }} />
+                        ))}
+                      </colgroup>
                       <thead>
                         <tr>
                           {["Animal", "Species · breed", "Days waiting", scoring ? "Intake-time estimate" : "Why this channel", "Source", "Channel", "Progress", ""].map(
@@ -378,13 +385,13 @@ export function PlannerClient({
                                   {row.stay.animalId}
                                 </span>
                               </td>
-                              <td className="t-small border-b px-2 py-2" style={BODY_CELL}>
+                              <td className="t-small border-b px-2 py-2" style={{ ...BODY_CELL, overflowWrap: "anywhere" }}>
                                 {[row.stay.species, row.stay.breed ?? "breed not recorded"].join(" · ")}
                               </td>
                               <td className="t-small tabular border-b px-2 py-2 text-right" style={BODY_CELL}>
                                 {formatCount(row.stay.daysInCare)}
                               </td>
-                              <td className="t-small border-b px-2 py-2" style={BODY_CELL}>
+                              <td className="t-small border-b px-2 py-2" style={{ ...BODY_CELL, overflowWrap: "anywhere" }}>
                                 {scoring
                                   ? horizon.status === "already_past_horizon"
                                     ? `${horizon.headline}${row.stay.pLongStay60d === null ? "" : ` · intake estimate ${formatPercent(row.stay.pLongStay60d)}`}`
@@ -409,7 +416,7 @@ export function PlannerClient({
                                   id={`channel-${row.stay.episodeId}`}
                                   value={row.channel.channel}
                                   onChange={(event) => reassign(row, event.target.value)}
-                                  className="field t-caption"
+                                  className="field t-caption w-full"
                                   style={{ minHeight: 36 }}
                                 >
                                   {channels.map((option) => (
@@ -427,7 +434,7 @@ export function PlannerClient({
                                   id={`progress-${row.stay.episodeId}`}
                                   value={progress[row.stay.episodeId] ?? ""}
                                   onChange={(event) => setRowProgress(row.stay.episodeId, event.target.value)}
-                                  className="field t-caption no-print"
+                                  className="field t-caption no-print w-full"
                                   style={{ minHeight: 36 }}
                                 >
                                   <option value="">—</option>
@@ -543,6 +550,10 @@ export function PlannerClient({
     </div>
   );
 }
+
+/** Animal · species/breed · days · estimate/reason · source · channel ·
+ *  progress · remove. Percentages of the table width. */
+const PLAN_COLUMNS = ["11%", "16%", "7%", "16%", "9%", "24%", "11%", "6%"] as const;
 
 const BODY_CELL = {
   borderColor: "var(--border-hairline)",

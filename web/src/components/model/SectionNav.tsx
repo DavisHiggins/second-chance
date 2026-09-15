@@ -11,31 +11,50 @@ export interface SectionLink {
 
 /**
  * Table of contents for the long How-it-works page: a sticky list on
- * desktop, a select on small screens. The current section is tracked with an
- * IntersectionObserver so the list doubles as a progress indicator, and
- * jumps go through the smooth-scroll provider so they are not abrupt where
- * the rest of the page is not.
+ * desktop, a select on small screens. The current section is the last one
+ * whose top has passed a line a quarter of the way down the viewport, read
+ * from the scroll position rather than from an IntersectionObserver: an
+ * observer only reports the sections that crossed its band on a given
+ * frame, so once the active section scrolled out and the next was already
+ * inside, nothing fired and the highlight stuck. Jumps go through the
+ * smooth-scroll provider so they are not abrupt where the rest of the page
+ * is not.
  */
+const ACTIVE_LINE = 0.25;
+
 export function SectionNav({ sections }: { sections: SectionLink[] }) {
   const [active, setActive] = useState(sections[0]?.id ?? "");
   const scroll = useSmoothScroll();
 
   useEffect(() => {
-    if (typeof IntersectionObserver === "undefined") return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visible[0]) setActive(visible[0].target.id);
-      },
-      { rootMargin: "-20% 0px -70% 0px" },
-    );
-    for (const section of sections) {
-      const node = document.getElementById(section.id);
-      if (node) observer.observe(node);
-    }
-    return () => observer.disconnect();
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const line = window.innerHeight * ACTIVE_LINE;
+      let current = sections[0]?.id ?? "";
+      for (const section of sections) {
+        const node = document.getElementById(section.id);
+        if (!node) continue;
+        if (node.getBoundingClientRect().top <= line) current = section.id;
+        else break;
+      }
+      // At the very bottom the last section may never reach the line.
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2) {
+        current = sections[sections.length - 1]?.id ?? current;
+      }
+      setActive((previous) => (previous === current ? previous : current));
+    };
+    const schedule = () => {
+      if (frame === 0) frame = requestAnimationFrame(measure);
+    };
+    measure();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      if (frame) cancelAnimationFrame(frame);
+    };
   }, [sections]);
 
   const jump = (id: string) => {

@@ -127,7 +127,7 @@ export function TargetMetrics({
   caption: string;
 }) {
   return (
-    <div className="overflow-x-auto" data-lenis-prevent="">
+    <div className="overflow-x-auto">
       <table className="w-full border-collapse" style={{ minWidth: 560 }}>
         <caption className="t-small pb-3 text-left" style={{ color: "var(--ink-secondary)" }}>
           {caption}

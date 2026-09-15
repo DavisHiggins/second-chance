@@ -84,7 +84,7 @@ export function ChartFrame({
       {/* The height is reserved either way, so switching views shifts nothing. */}
       <div className="mt-4" style={{ minHeight: height }}>
         {showTable ? (
-          <div className="overflow-x-auto" style={{ maxHeight: height + 40 }} data-lenis-prevent="">
+          <div className="overflow-x-auto" style={{ maxHeight: height + 40 }}>
             <table className="w-full border-collapse">
               <caption className="t-caption pb-2 text-left" style={{ color: "var(--ink-muted)" }}>
                 {table.caption}

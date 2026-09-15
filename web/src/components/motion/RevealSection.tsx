@@ -75,21 +75,43 @@ export function RevealSection({
 }
 
 /** A child of RevealSection that takes part in the stagger. Only the first
- *  eight are staggered; the rest arrive with the eighth. */
+ *  eight are staggered; the rest arrive with the eighth.
+ *
+ *  `standalone` makes the item watch the viewport itself instead of taking
+ *  its cue from a parent RevealSection. A list that grows after its first
+ *  reveal ("Show more") needs this: the parent's `once` reveal has already
+ *  fired, so children mounted later would otherwise stay at their hidden
+ *  variant forever. */
 export function RevealItem({
   children,
   className = "",
   as = "div",
   index = 0,
   style,
+  standalone = false,
 }: {
   children: ReactNode;
   className?: string;
   as?: "div" | "li" | "article" | "section";
   index?: number;
   style?: CSSProperties;
+  standalone?: boolean;
 }) {
   const Tag = motion[as];
+  if (standalone) {
+    return (
+      <Tag
+        className={className}
+        style={style}
+        variants={itemVariants(index)}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: true, amount: 0.1, margin: "0px 0px -4% 0px" }}
+      >
+        {children}
+      </Tag>
+    );
+  }
   return (
     <Tag className={className} style={style} variants={itemVariants(index)}>
       {children}

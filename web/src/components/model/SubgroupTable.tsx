@@ -45,7 +45,7 @@ export function SubgroupTable({ rows, sample }: { rows: SubgroupMetric[]; sample
   ];
 
   return (
-    <div className="overflow-x-auto" data-lenis-prevent="">
+    <div className="overflow-x-auto">
       <table className="w-full border-collapse" style={{ minWidth: 640 }}>
         <caption className="t-small pb-3 text-left" style={{ color: "var(--ink-secondary)" }}>
           {sample}

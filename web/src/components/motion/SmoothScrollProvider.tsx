@@ -2,7 +2,7 @@
 
 import Lenis from "lenis";
 import { usePathname } from "next/navigation";
-import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 import { gsap, ScrollTrigger, prefersReducedMotion } from "./gsapSetup";
 
 /**
@@ -20,10 +20,20 @@ import { gsap, ScrollTrigger, prefersReducedMotion } from "./gsapSetup";
  * - Touch scrolling stays native (`syncTouch` off). Smoothing a finger is the
  *   fastest way to make a data table feel broken on a phone.
  *
- * Nested scrollers (the data drawer, wide tables) carry `data-lenis-prevent`
- * so the wheel reaches them. Reduced motion skips the instance entirely and
- * the page scrolls as the browser scrolls it. Anchors are handled by Lenis so
- * "#how-it-helps" still lands where it should.
+ * Nested scrollers are detected rather than declared: `allowNestedScroll`
+ * lets Lenis check whether the element under the pointer can actually scroll
+ * in the gesture's direction, and only then hands the wheel to it. A wide
+ * table that scrolls sideways therefore still lets a vertical wheel move the
+ * page. The drawers still carry `data-lenis-prevent` as a belt-and-braces
+ * opt-out, but ordinary `overflow-x-auto` wrappers must not: marking them
+ * made Lenis ignore the wheel over most of the queue and planner, so its
+ * in-flight animation fought the browser's native scroll.
+ *
+ * Every route change lands at the top of the new page (or at its hash
+ * target). Next scrolls to the top on its own for link navigation, but a
+ * Lenis animation still running from the previous page would overwrite that
+ * on the next frame, so the position is pinned here as well, immediately and
+ * before paint.
  */
 
 interface SmoothScroll {
@@ -34,14 +44,23 @@ interface SmoothScroll {
 
 const SmoothScrollContext = createContext<SmoothScroll | null>(null);
 
+/** Height of the sticky header plus breathing room, for hash targets. */
+const HASH_OFFSET = -88;
+
 const NOOP: SmoothScroll = {
   stop: () => undefined,
   start: () => undefined,
-  scrollTo: (target) => {
+  scrollTo: (target, options) => {
     if (typeof window === "undefined") return;
-    if (typeof target === "number") window.scrollTo({ top: target });
-    else if (typeof target === "string") document.querySelector(target)?.scrollIntoView();
-    else target.scrollIntoView();
+    const behavior: ScrollBehavior = options?.immediate ? "auto" : "smooth";
+    if (typeof target === "number") {
+      window.scrollTo({ top: target, behavior });
+      return;
+    }
+    const node = typeof target === "string" ? document.querySelector<HTMLElement>(target) : target;
+    if (!node) return;
+    const top = node.getBoundingClientRect().top + window.scrollY + (options?.offset ?? 0);
+    window.scrollTo({ top: Math.max(0, top), behavior });
   },
 };
 
@@ -67,6 +86,7 @@ export function SmoothScrollProvider({ children }: { children: ReactNode }) {
       syncTouch: false,
       autoRaf: false,
       anchors: true,
+      allowNestedScroll: true,
       prevent: (node) => node.hasAttribute("data-lenis-prevent"),
     });
     lenisRef.current = lenis;
@@ -84,6 +104,24 @@ export function SmoothScrollProvider({ children }: { children: ReactNode }) {
       lenisRef.current = null;
     };
   }, []);
+
+  // Every page opens at its top. The browser is told not to restore old
+  // positions itself so back and forward behave the same as a link.
+  useLayoutEffect(() => {
+    if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
+
+    const hash = window.location.hash;
+    const target = hash.length > 1 ? document.getElementById(decodeURIComponent(hash.slice(1))) : null;
+    const lenis = lenisRef.current;
+
+    if (target) {
+      if (lenis) lenis.scrollTo(target, { immediate: true, force: true, offset: HASH_OFFSET });
+      else NOOP.scrollTo(target, { immediate: true, offset: HASH_OFFSET });
+    } else {
+      if (lenis) lenis.scrollTo(0, { immediate: true, force: true });
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    }
+  }, [pathname]);
 
   // A route change can swap a tall page for a short one. Give ScrollTrigger a
   // frame to see the new layout so its positions are not the old page's.

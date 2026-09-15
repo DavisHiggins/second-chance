@@ -214,15 +214,18 @@ export default async function DiscoverDetailPage({ params, searchParams }: { par
         <h2 id="timeline-heading" className="t-title" style={{ color: "var(--ink-primary)" }}>
           {DETAIL.timelineTitle}
         </h2>
-        <div className="relative mt-5 h-2 rounded-full" style={{ background: "var(--surface-sunken)" }} role="presentation">
+        {/* The two horizon markers sit on opposite sides of the bar. On a
+            long stay the whole bar is scaled to the wait, so day 30 and day
+            60 fall close together and their labels would otherwise collide. */}
+        <div className="relative mt-9 h-2 rounded-full" style={{ background: "var(--surface-sunken)" }} role="presentation">
           <span
             className="absolute left-0 top-0 h-full rounded-full"
             style={{ width: pct(stay.daysInCare), background: "var(--accent)" }}
           />
-          <Marker at={pct(ADOPTION_HORIZON_DAYS)} label={`Day ${ADOPTION_HORIZON_DAYS}`} />
-          <Marker at={pct(LONG_STAY_HORIZON_DAYS)} label={`Day ${LONG_STAY_HORIZON_DAYS}`} />
+          <Marker at={pct(ADOPTION_HORIZON_DAYS)} label={`Day ${ADOPTION_HORIZON_DAYS}`} side="above" />
+          <Marker at={pct(LONG_STAY_HORIZON_DAYS)} label={`Day ${LONG_STAY_HORIZON_DAYS}`} side="below" />
         </div>
-        <ol className="t-small mt-8 grid gap-2 sm:grid-cols-3" style={{ color: "var(--ink-secondary)" }}>
+        <ol className="t-small mt-9 grid gap-2 sm:grid-cols-3" style={{ color: "var(--ink-secondary)" }}>
           <li>
             <span className="t-caption block" style={{ color: "var(--ink-muted)" }}>
               Arrived
@@ -393,11 +396,16 @@ function Fact({ label, value, note }: { label: string; value: string; note?: str
   );
 }
 
-function Marker({ at, label }: { at: string; label: string }) {
+function Marker({ at, label, side }: { at: string; label: string; side: "above" | "below" }) {
   return (
     <span className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ left: at }}>
       <span className="block h-4 w-px" style={{ background: "var(--ink-muted)" }} aria-hidden="true" />
-      <span className="t-caption absolute left-1/2 top-4 -translate-x-1/2 whitespace-nowrap" style={{ color: "var(--ink-muted)" }}>
+      <span
+        className={`t-caption absolute left-1/2 -translate-x-1/2 whitespace-nowrap ${
+          side === "above" ? "bottom-full mb-0.5" : "top-full mt-0.5"
+        }`}
+        style={{ color: "var(--ink-muted)" }}
+      >
         {label}
       </span>
     </span>

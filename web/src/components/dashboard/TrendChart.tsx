@@ -25,8 +25,12 @@ import type { MonthlyPoint } from "@/lib/austin/metrics";
  * only the pair distinguishes them. They are two event counts, not one
  * cohort: the lines may involve different animals, so no rate is derived by
  * dividing them. The first month of the feed and the current month are
- * partial; the current one is drawn and shaded so the drop at the end reads
- * as an unfinished month rather than a collapse.
+ * partial; the current one is drawn and the slot leading into it is shaded
+ * so the drop at the end reads as an unfinished month rather than a collapse.
+ *
+ * Axis titles live outside the tick labels: the y title sits in its own
+ * column to the left of the numbers and the x title in its own row beneath
+ * the months, so neither is ever drawn over a value.
  */
 export function TrendChart({ months }: { months: MonthlyPoint[] }) {
   const reducedMotion = useReducedMotion();
@@ -47,6 +51,9 @@ export function TrendChart({ months }: { months: MonthlyPoint[] }) {
   const first = complete[0];
   const last = complete[complete.length - 1];
   const partial = series.find((p) => p.partial);
+  // The shaded slot runs from the last complete month to the partial one, so
+  // its label has room and is not clipped at the plot's right edge.
+  const partialFrom = partial ? series[Math.max(0, series.indexOf(partial) - 1)] : null;
   const summary = `Monthly intakes and adoptions from ${first.label} to ${last.label}. Intakes moved from ${first.intakes} to ${last.intakes}; adoptions from ${first.adoptions} to ${last.adoptions}.${
     partial ? ` ${partial.label} is a partial month.` : ""
   }`;
@@ -73,15 +80,15 @@ export function TrendChart({ months }: { months: MonthlyPoint[] }) {
       }}
     >
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={series} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
+        <LineChart data={series} margin={{ top: 12, right: 16, bottom: 4, left: 4 }}>
           <CartesianGrid stroke="var(--grid-line)" vertical={false} />
-          {partial ? (
+          {partial && partialFrom ? (
             <ReferenceArea
-              x1={partial.label}
+              x1={partialFrom.label}
               x2={partial.label}
               fill="var(--surface-sunken)"
               fillOpacity={0.9}
-              label={{ value: "partial", position: "insideTop", fill: "var(--ink-muted)", fontSize: 11 }}
+              label={{ value: "partial month", position: "insideTop", fill: "var(--ink-muted)", fontSize: 11 }}
             />
           ) : null}
           <XAxis
@@ -90,14 +97,31 @@ export function TrendChart({ months }: { months: MonthlyPoint[] }) {
             tick={{ fill: "var(--ink-muted)", fontSize: 11 }}
             tickLine={false}
             minTickGap={24}
+            height={44}
+            label={{
+              value: "Month",
+              position: "insideBottom",
+              offset: 0,
+              fill: "var(--ink-muted)",
+              fontSize: 11,
+            }}
           />
           <YAxis
             stroke="var(--axis-line)"
             tick={{ fill: "var(--ink-muted)", fontSize: 11 }}
             tickLine={false}
             axisLine={false}
-            width={48}
-            label={{ value: "events", angle: -90, position: "insideLeft", fill: "var(--ink-muted)", fontSize: 11, dx: 18 }}
+            width={64}
+            tickMargin={6}
+            label={{
+              value: "Events per month",
+              angle: -90,
+              position: "insideLeft",
+              offset: 4,
+              fill: "var(--ink-muted)",
+              fontSize: 11,
+              style: { textAnchor: "middle" },
+            }}
           />
           <Tooltip
             contentStyle={{

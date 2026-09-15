@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { QUEUE } from "@/lib/content";
 import { formatCount } from "@/lib/format";
 import { LONG_STAY_HORIZON_DAYS, TRIAGE_THRESHOLDS } from "@/lib/model/horizon";
@@ -31,8 +31,8 @@ export type QueueView = "table" | "cards";
  *
  * Every filter, the sort and the view live in the URL, so a link carries the
  * exact list and the browser's back button restores it after a record page.
- * The scroll position is kept in session storage under the same URL, so
- * returning from a record lands where the reader left.
+ * Every visit opens at the top of the page, like every other route; the
+ * shell pins the position on navigation.
  */
 
 /**
@@ -144,41 +144,6 @@ export function QueueClient({
   useEffect(() => {
     if (searchParams.get("view") === null && window.innerWidth < 640) setView("cards");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Scroll restoration: saved under the URL on every scroll, restored once
-  // after the list has rendered on return.
-  const restoredRef = useRef(false);
-  useEffect(() => {
-    const keyFor = () => `sc-queue-scroll:${window.location.pathname}${window.location.search}`;
-    if (!restoredRef.current) {
-      restoredRef.current = true;
-      try {
-        const saved = window.sessionStorage.getItem(keyFor());
-        if (saved) {
-          const y = Number(saved);
-          if (Number.isFinite(y) && y > 0) requestAnimationFrame(() => window.scrollTo({ top: y }));
-        }
-      } catch {
-        // Session storage unavailable: nothing to restore.
-      }
-    }
-    let frame = 0;
-    const onScroll = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        try {
-          window.sessionStorage.setItem(keyFor(), String(window.scrollY));
-        } catch {
-          // ignore
-        }
-      });
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      cancelAnimationFrame(frame);
-    };
   }, []);
 
   const visible = useMemo(() => {
@@ -300,7 +265,6 @@ export function QueueClient({
       ) : (
         <div
           className="overflow-x-auto border"
-          data-lenis-prevent=""
           style={{
             background: "var(--surface-card)",
             borderColor: "var(--border-hairline)",
