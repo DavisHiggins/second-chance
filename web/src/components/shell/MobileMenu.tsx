@@ -126,6 +126,7 @@ export function MobileMenu({
 
   const work = NAV.filter((item) => item.group === "work");
   const learn = NAV.filter((item) => item.group === "learn");
+  const contact = NAV.filter((item) => item.group === "contact");
 
   return (
     <div
@@ -168,6 +169,13 @@ export function MobileMenu({
           pathname={pathname}
           onNavigate={onClose}
           heading={SHELL.learnGroup}
+        />
+        <MenuGroup
+          items={contact}
+          startIndex={work.length + learn.length}
+          pathname={pathname}
+          onNavigate={onClose}
+          heading={contact[0]?.label ?? "Contact"}
         />
       </nav>
 

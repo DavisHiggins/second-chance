@@ -26,15 +26,16 @@ export const USE_POLICY_FULL: readonly string[] = [
 ];
 
 export interface NavItem {
-  href: "/" | "/queue" | "/discover" | "/planner" | "/impact" | "/model" | "/about";
+  href: "/" | "/queue" | "/discover" | "/planner" | "/impact" | "/model" | "/about" | "/contact";
   label: string;
   /** One line for the mobile menu. */
   description: string;
-  group: "work" | "learn";
+  group: "work" | "learn" | "contact";
 }
 
-/** Seven destinations. The first four are the daily work; the last three are
- *  grouped under "Learn" where the header runs out of room. */
+/** Eight destinations. The first four are the daily work; the next three are
+ *  grouped under "Learn" where the header runs out of room; Contact stands
+ *  on its own to the right of Learn. */
 export const NAV: readonly NavItem[] = [
   { href: "/", label: "Dashboard", description: "Shelter overview", group: "work" },
   {
@@ -53,6 +54,7 @@ export const NAV: readonly NavItem[] = [
   { href: "/impact", label: "Impact", description: "Turning shelter data into earlier support", group: "learn" },
   { href: "/model", label: "How it works", description: "Understand the data and predictions", group: "learn" },
   { href: "/about", label: "About", description: "About SecondChance", group: "learn" },
+  { href: "/contact", label: "Contact", description: "Questions, feedback, or a conversation", group: "contact" },
 ];
 
 export const SHELL = {
@@ -78,6 +80,7 @@ export const FOOTER = {
     "SecondChance reads the City of Austin's public shelter records and estimates which animals may wait longest, so attention can go to them earlier.",
   navHeading: "Pages",
   sourceHeading: "Source",
+  contactHeading: "Contact",
   sourceLink: "City of Austin open data portal",
   sourceLine: "Four Austin Animal Center datasets: two current feeds, refreshed hourly, and two frozen archives.",
   detailsAction: "Data details and definitions",
@@ -544,6 +547,36 @@ export const ABOUT = {
     "The source code is published under the MIT License. Austin's datasets are public domain. The Animaster motion components adapted for this site are licensed separately and are not redistributed; see the repository's ATTRIBUTION file.",
   ctaDashboard: "Explore the dashboard",
   ctaModel: "Understand the data",
+} as const;
+
+/* -------------------------------------------------------------------------- */
+
+export const CONTACT = {
+  pageTitle: "Contact",
+  eyebrow: "Contact",
+  headline: "Questions? Reach out.",
+  intro:
+    "If you have a question about SecondChance, the data behind it, or how the approach could work for another shelter, send a note. Email is the most direct route; LinkedIn and Instagram are open too.",
+
+  reachHeading: "Ways to reach us",
+  email: "davishiggins@icloud.com",
+  emailLabel: "Email",
+  emailNote: "Opens your mail app with a new message.",
+  socialLabel: "Social",
+  socialNote: "Profiles open in a new tab.",
+  linkedin: { label: "LinkedIn", href: "https://www.linkedin.com/in/davishiggins" },
+  instagram: { label: "Instagram", href: "https://www.instagram.com/daviscoded" },
+
+  formHeading: "Send a message",
+  formNote:
+    "Nothing is stored here. Send opens your mail app with the subject and message written exactly as you drafted them, ready to send.",
+  subjectLabel: "Subject",
+  subjectPlaceholder: "What is this about?",
+  messageLabel: "Message",
+  messagePlaceholder: "Write your message here.",
+  send: "Send",
+  sent: "Opened in your mail app",
+  validation: "Add a subject and a message before sending.",
 } as const;
 
 /* -------------------------------------------------------------------------- */

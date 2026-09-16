@@ -1,8 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import { FOOTER, NAV, SHELL } from "@/lib/content";
+import { CONTACT, FOOTER, NAV, SHELL } from "@/lib/content";
 import { SOCRATA_DOMAIN } from "@/lib/austin/datasets";
 import DataDetailsTrigger from "@/components/shell/DataDetailsTrigger";
+import { InstagramIcon, LinkedInIcon } from "@/components/ui/SocialIcons";
 
 /**
  * The footer is the brand anchor: the navy band from the logo, carrying the
@@ -87,6 +88,28 @@ export function Footer() {
             >
               {FOOTER.detailsAction}
             </DataDetailsTrigger>
+
+            <h2 className="t-overline mt-8">{FOOTER.contactHeading}</h2>
+            <ul className="mt-3 flex items-center gap-2" aria-label={FOOTER.contactHeading}>
+              {[
+                { ...CONTACT.linkedin, Icon: LinkedInIcon },
+                { ...CONTACT.instagram, Icon: InstagramIcon },
+              ].map(({ label, href, Icon }) => (
+                <li key={href}>
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    aria-label={label}
+                    title={label}
+                    className="social-link inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] border"
+                    style={{ borderColor: "var(--brand-band-hairline)", color: "var(--brand-band-ink)" }}
+                  >
+                    <Icon size={20} />
+                  </a>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 

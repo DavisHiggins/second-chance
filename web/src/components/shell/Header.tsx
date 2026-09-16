@@ -218,6 +218,7 @@ export function Header({
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const work = NAV.filter((item) => item.group === "work");
+  const contact = NAV.filter((item) => item.group === "contact");
 
   return (
     <>
@@ -243,6 +244,14 @@ export function Header({
               />
             ))}
             <LearnMenu pathname={pathname} />
+            {contact.map((item) => (
+              <NavLink
+                key={item.href}
+                href={item.href}
+                label={item.label}
+                active={isActive(item.href, pathname)}
+              />
+            ))}
           </nav>
 
           <div className="flex-1" />

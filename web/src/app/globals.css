@@ -809,6 +809,18 @@ html.js .reveal-text[data-reveal="pending"][data-scroll="true"] .split-line {
   background: var(--surface-sunken);
 }
 
+/* Platform links in the footer and on Contact: a hairline tile that lifts
+   on hover, no colour change on the mark itself. */
+.social-link {
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+.social-link:hover {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  transform: translateY(-2px);
+}
+
 /* Form controls, one look. */
 .field {
   min-height: 44px;
