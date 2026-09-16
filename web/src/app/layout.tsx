@@ -8,7 +8,7 @@ import Footer from "@/components/shell/Footer";
 import Providers from "@/components/shell/Providers";
 import PageTransition from "@/components/shell/PageTransition";
 import RefreshOnReturn from "@/components/shell/RefreshOnReturn";
-import { PREFERENCES_BOOTSTRAP } from "@/components/shell/Preferences";
+import { DEFAULT_DENSITY, DEFAULT_THEME, PREFERENCES_BOOTSTRAP } from "@/components/shell/Preferences";
 import { buildQualityRows } from "@/lib/qualityRows";
 
 const DESCRIPTION =
@@ -72,7 +72,13 @@ export default async function RootLayout({
   const view = await getShelterView();
 
   return (
-    <html lang="en" suppressHydrationWarning className={`${manrope.variable} ${plexMono.variable}`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      data-theme={DEFAULT_THEME}
+      data-density={DEFAULT_DENSITY}
+      className={`${manrope.variable} ${plexMono.variable}`}
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: PREFERENCES_BOOTSTRAP }} />
       </head>

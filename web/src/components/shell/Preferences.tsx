@@ -14,48 +14,34 @@ interface PreferencesValue {
 
 const PreferencesContext = createContext<PreferencesValue | null>(null);
 
-export const THEME_KEY = "sc-theme";
-export const DENSITY_KEY = "sc-density";
-
 /**
- * Both preferences are already on the document element before React mounts,
- * written by the inline script in the root layout. Reading them back here keeps
- * the first client render identical to the server render.
+ * Nothing here is persisted. Every load starts dark and comfortable; the
+ * header controls only change the current page until the next navigation
+ * reload. The root layout renders the same attributes on `<html>` so the
+ * server markup, the first paint and the first client render all agree.
  */
-function readAttribute<T extends string>(name: string, fallback: T): T {
-  if (typeof document === "undefined") return fallback;
-  const value = document.documentElement.getAttribute(name);
-  return (value as T) || fallback;
-}
+export const DEFAULT_THEME: Theme = "dark";
+export const DEFAULT_DENSITY: Density = "comfortable";
 
 export function PreferencesProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
-  const [density, setDensityState] = useState<Density>("comfortable");
+  const [theme, setThemeState] = useState<Theme>(DEFAULT_THEME);
+  const [density, setDensityState] = useState<Density>(DEFAULT_DENSITY);
 
+  // Re-assert the defaults after hydration so the document can never disagree
+  // with the provider, whatever the browser restored or hydration patched.
   useEffect(() => {
-    setThemeState(readAttribute<Theme>("data-theme", "dark"));
-    setDensityState(readAttribute<Density>("data-density", "comfortable"));
+    document.documentElement.setAttribute("data-theme", DEFAULT_THEME);
+    document.documentElement.setAttribute("data-density", DEFAULT_DENSITY);
   }, []);
 
   const setTheme = useCallback((next: Theme) => {
     setThemeState(next);
     document.documentElement.setAttribute("data-theme", next);
-    try {
-      window.localStorage.setItem(THEME_KEY, next);
-    } catch {
-      // A viewer with site data blocked still gets the preference for this
-      // session; only persistence is lost.
-    }
   }, []);
 
   const setDensity = useCallback((next: Density) => {
     setDensityState(next);
     document.documentElement.setAttribute("data-density", next);
-    try {
-      window.localStorage.setItem(DENSITY_KEY, next);
-    } catch {
-      // See above.
-    }
   }, []);
 
   return (
@@ -73,7 +59,7 @@ export function usePreferences(): PreferencesValue {
   return context;
 }
 
-/** Runs before first paint so the theme never flashes. It also marks the
- *  document as script-capable (`html.js`); reveal start states are scoped to
- *  that class so a reader without script sees every heading immediately. */
-export const PREFERENCES_BOOTSTRAP = `(function(){document.documentElement.classList.add("js");try{document.documentElement.setAttribute("data-theme","dark");var d=localStorage.getItem("${DENSITY_KEY}")||"comfortable";document.documentElement.setAttribute("data-density",d);}catch(e){document.documentElement.setAttribute("data-theme","dark");document.documentElement.setAttribute("data-density","comfortable");}})();`;
+/** Runs before first paint. It pins the dark theme on the document and marks
+ *  it as script-capable (`html.js`); reveal start states are scoped to that
+ *  class so a reader without script sees every heading immediately. */
+export const PREFERENCES_BOOTSTRAP = `(function(){var h=document.documentElement;h.classList.add("js");h.setAttribute("data-theme","${DEFAULT_THEME}");h.setAttribute("data-density","${DEFAULT_DENSITY}");})();`;
