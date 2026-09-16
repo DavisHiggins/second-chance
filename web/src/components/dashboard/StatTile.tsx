@@ -60,7 +60,16 @@ function sparklinePath(values: number[]): string {
  * this means" disclosure fed by the shared metric registry so the tile, the
  * drawer and the model page cannot disagree.
  */
-export function StatTile({ tile }: { tile: StatTileData }) {
+export function StatTile({
+  tile,
+  detailsOpen,
+  onDetailsToggle,
+}: {
+  tile: StatTileData;
+  /** When the row shares one open state, it is passed in here. */
+  detailsOpen?: boolean;
+  onDetailsToggle?: (open: boolean) => void;
+}) {
   const reducedMotion = useReducedMotion();
   const measured = tile.display !== null;
   const entry = metric(tile.metricId);
@@ -160,7 +169,12 @@ export function StatTile({ tile }: { tile: StatTileData }) {
         ) : null}
       </div>
 
-      <Disclosure summary={DASHBOARD.whatThisMeans} className="mt-3">
+      <Disclosure
+        summary={DASHBOARD.whatThisMeans}
+        className="mt-3"
+        open={detailsOpen}
+        onToggle={onDetailsToggle}
+      >
         <p className="t-small" style={{ color: "var(--ink-secondary)" }}>
           {entry.meaning}
         </p>

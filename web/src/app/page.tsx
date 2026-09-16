@@ -7,7 +7,8 @@ import { DASHBOARD } from "@/lib/content";
 import { formatCount, formatMonth, formatNumber, formatPercent } from "@/lib/format";
 import UsePolicyBanner from "@/components/shell/UsePolicyBanner";
 import Card from "@/components/ui/Card";
-import StatTile, { type StatTileData } from "@/components/dashboard/StatTile";
+import { type StatTileData } from "@/components/dashboard/StatTile";
+import StatTileGrid from "@/components/dashboard/StatTileGrid";
 import TrendChart from "@/components/dashboard/TrendChart";
 import OutcomeMixChart from "@/components/dashboard/OutcomeMixChart";
 import SegmentBars from "@/components/dashboard/SegmentBars";
@@ -158,13 +159,7 @@ export default async function DashboardPage() {
 
       <AnimatedDivider number="01" label={DASHBOARD.sections.overview} id="overview" />
 
-      <RevealSection as="div" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Headline figures">
-        {tiles.map((tile, index) => (
-          <RevealItem key={tile.id} index={index} className="h-full">
-            <StatTile tile={tile} />
-          </RevealItem>
-        ))}
-      </RevealSection>
+      <StatTileGrid tiles={tiles} />
 
       {scoring && attention.length > 0 ? (
         <>
