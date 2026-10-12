@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 60" width="400" height="60" role="img" aria-label="03 The pages">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#05274C"/><stop offset="1" stop-color="#041D38"/></linearGradient></defs>
+<style>@media (prefers-reduced-motion: reduce){*{animation:none!important}}.card{animation:rise .6s cubic-bezier(.2,.8,.2,1) 0.10s both}@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}.arrow{animation:nudge 1.8s ease-in-out 0.90s infinite alternate}@keyframes nudge{from{transform:translateX(0)}to{transform:translateX(4px)}}.paw{animation:paw 2.4s ease-in-out 1.10s infinite alternate}@keyframes paw{from{opacity:.35}to{opacity:.9}}</style>
+<g class="card">
+<rect x="1" y="3" width="398" height="54" rx="12" fill="url(#g)" stroke="#0A9E84" stroke-opacity=".45"/>
+<rect x="1" y="15" width="3" height="30" rx="1.5" fill="#2FC3A5"/>
+<text x="22" y="35.5" font-family="'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" font-weight="600" fill="#2FC3A5">03</text>
+<path d="M52 18V42" stroke="#2FC3A5" stroke-opacity=".3"/>
+<text x="66" y="27" font-family="Manrope, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#F2F7F7">The pages</text>
+<text x="66" y="45" font-family="Manrope, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#8FA6B2">Eight routes, one workflow</text>
+<g class="paw"><path d="M0 4.2c-2.6 0-6.2 3.9-6.2 6.4 0 1.7 1.4 2.4 3 2.4 1.3 0 2.2-.7 3.2-.7s1.9.7 3.2.7c1.6 0 3-.7 3-2.4 0-2.5-3.6-6.4-6.2-6.4zM-4.6 3.3c1 .3 2-.6 2.3-2s-.2-2.9-1.2-3.2-2 .6-2.3 2 .2 2.9 1.2 3.2zM4.6 3.3c1-.3 1.5-1.8 1.2-3.2s-1.3-2.3-2.3-2-1.5 1.8-1.2 3.2 1.3 2.3 2.3 2zM-8.3 6.6c.8-.3 1-1.5.5-2.6s-1.6-1.8-2.4-1.5-1 1.5-.5 2.6 1.6 1.8 2.4 1.5zM8.3 6.6c.8.3 1.9-.4 2.4-1.5s.3-2.3-.5-2.6-1.9.4-2.4 1.5-.3 2.3.5 2.6z" transform="translate(340 26) scale(.75)" fill="#2FC3A5"/></g>
+<g class="arrow"><path d="M362 30H378M372 24L378 30L372 36" fill="none" stroke="#2FC3A5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g>
+</g>
+</svg>

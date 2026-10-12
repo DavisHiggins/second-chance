@@ -15,24 +15,21 @@ A predictive analytics project built at UNC Charlotte that reads the City of Aus
 <details>
 <summary><strong>Skip to a section</strong></summary>
 
-- [What SecondChance does](#what-secondchance-does)
-- [The one rule](#the-one-rule)
-- [The pages](#the-pages)
-- [How the data flows](#how-the-data-flows)
-- [The model](#the-model)
-- [What the numbers mean](#what-the-numbers-mean)
-- [Brand and design system](#brand-and-design-system)
-- [Quick start](#quick-start)
-- [Repository layout](#repository-layout)
-- [Testing](#testing)
-- [The research behind it](#the-research-behind-it)
-- [Limitations](#limitations)
-- [Team](#team)
-- [Data, attribution and licence](#data-attribution-and-licence)
+<p align="center">
+<a href="#what-secondchance-does"><img src=".github/readme/toc-01.svg" width="400" alt="01 What SecondChance does" /></a>&nbsp;<a href="#the-one-rule"><img src=".github/readme/toc-02.svg" width="400" alt="02 The one rule" /></a><br />
+<a href="#the-pages"><img src=".github/readme/toc-03.svg" width="400" alt="03 The pages" /></a>&nbsp;<a href="#how-the-data-flows"><img src=".github/readme/toc-04.svg" width="400" alt="04 How the data flows" /></a><br />
+<a href="#the-model"><img src=".github/readme/toc-05.svg" width="400" alt="05 The model" /></a>&nbsp;<a href="#what-the-numbers-mean"><img src=".github/readme/toc-06.svg" width="400" alt="06 What the numbers mean" /></a><br />
+<a href="#brand-and-design-system"><img src=".github/readme/toc-07.svg" width="400" alt="07 Brand and design system" /></a>&nbsp;<a href="#quick-start"><img src=".github/readme/toc-08.svg" width="400" alt="08 Quick start" /></a><br />
+<a href="#repository-layout"><img src=".github/readme/toc-09.svg" width="400" alt="09 Repository layout" /></a>&nbsp;<a href="#testing"><img src=".github/readme/toc-10.svg" width="400" alt="10 Testing" /></a><br />
+<a href="#the-research-behind-it"><img src=".github/readme/toc-11.svg" width="400" alt="11 The research behind it" /></a>&nbsp;<a href="#limitations"><img src=".github/readme/toc-12.svg" width="400" alt="12 Limitations" /></a><br />
+<a href="#team"><img src=".github/readme/toc-13.svg" width="400" alt="13 Team" /></a>&nbsp;<a href="#data-attribution-and-licence"><img src=".github/readme/toc-14.svg" width="400" alt="14 Data, attribution and licence" /></a><br />
+</p>
 
 </details>
 
 ---
+
+<img src=".github/readme/sec-01.svg" height="30" alt="" />
 
 ## What SecondChance does
 
@@ -46,6 +43,10 @@ Staff see three things side by side: **what was observed** (the wait, the record
 | Shelter leadership | Twelve-month trends, outcome shares and life-stage waits with definitions attached to every figure |
 | Reviewers and other shelters | A fully documented data path, model evaluation, subgroup checks, and a workflow that transfers even though the model does not |
 
+<br />
+
+<img src=".github/readme/sec-02.svg" height="30" alt="" />
+
 ## The one rule
 
 <p align="center"><img src=".github/readme/rule.svg" width="100%" alt="Animated graphic: as predicted long-stay risk rises, more kinds of support light up — new photos, profile refresh, foster outreach, adoption event." /></p>
@@ -53,6 +54,10 @@ Staff see three things side by side: **what was observed** (the wait, the record
 > **A high predicted long-stay risk is a request for more help, not less.** Scores route help toward animals. They must never be used to justify euthanasia, intake refusal, or reduced care.
 
 That policy ships on every operational page, in the data drawer, on Impact and on How it works. It is enforced in code where it can be: the public records grid receives a projection type with no field that could carry a score, and the intervention rules never prescribe a medical action.
+
+<br />
+
+<img src=".github/readme/sec-03.svg" height="30" alt="" />
 
 ## The pages
 
@@ -68,6 +73,10 @@ That policy ships on every operational page, in the data drawer, on Impact and o
 | `/impact` | **Turning shelter data into earlier support** | Three concrete uses, what the data shows, potential vs. measured, national applicability, the guardrail |
 | `/model` | **Understand the data and predictions** | Plain-language intro, data and refresh, metric guide, predictions, testing, subgroup checks, limitations, technical lineage |
 | `/about` | **About SecondChance** | Project origin, the team, Austin and beyond, what it can and cannot do |
+
+<br />
+
+<img src=".github/readme/sec-04.svg" height="30" alt="" />
 
 ## How the data flows
 
@@ -89,6 +98,10 @@ web/src/lib/shelter.server.ts         the finished view, cached for 30 minutes, 
 
 Five clocks are kept apart and named in the data drawer: the publisher's last write (`rowsUpdatedAt`), the newest row stamp, the newest animal event, this site's retrieval time, and the snapshot moment. Austin's floating timestamps are America/Chicago wall-clock time; they are converted through that zone before being compared with anything real (`web/src/lib/austin/time.ts`). There is no push subscription: the site re-reads the feeds on a bounded schedule, and a new request never counts as a new publication.
 
+<br />
+
+<img src=".github/readme/sec-05.svg" height="30" alt="" />
+
 ## The model
 
 Two LightGBM classifiers trained on completed stays from the current feeds, calibrated with isotonic regression on a later validation block, and evaluated on a still-later held-out test block. Every metric on the site is read from the committed artifact `web/src/data/model/model.json`; nothing is typed in by hand. Golden vectors written by the trainer are replayed through the TypeScript evaluator in tests so the two cannot drift.
@@ -100,6 +113,10 @@ Two LightGBM classifiers trained on completed stays from the current feeds, cali
 
 Both estimates are answered **at intake**. For an animal already past 60 days the site leads with that fact and keeps the intake estimate as context. Subgroup performance is reported by species, life stage, intake condition, breed structure and coat colour, in percentage points with group sizes; small groups are shown without a judgement. One known population issue is disclosed on How it works: stays recorded with an intake condition of “Dead” are present in the evaluation set and removing them requires a documented retrain.
 
+<br />
+
+<img src=".github/readme/sec-06.svg" height="30" alt="" />
+
 ## What the numbers mean
 
 A single metric registry (`web/src/lib/metrics/registry.ts`) defines every figure once — meaning, unit, formula, window, sample, use, limitation and source — and feeds the dashboard tiles, chart notes, record pages, the data drawer and the How it works glossary. A few that are easy to misread:
@@ -109,6 +126,10 @@ A single metric registry (`web/src/lib/metrics/registry.ts`) defines every figur
 - **Monthly intakes and adoptions** are two event counts that can involve different animals; the lines are never divided.
 - **Historical evidence** on the planner means an association in the 2013–2022 archive; nothing on the site is a measured intervention effect.
 - **The planning estimate** is an assumed increase in **percentage points**, capped at 100% per animal, with rows past their 30-day window counted as hypothetical.
+
+<br />
+
+<img src=".github/readme/sec-07.svg" height="30" alt="" />
 
 ## Brand and design system
 
@@ -125,6 +146,10 @@ The identity is the logo: the navy of the dog and the teal of the arrow that reo
 | ![#D9642F](.github/readme/swatch-D9642F.svg) Warm accent | `#D9642F`, rationed for long waits and calls to act | `#F0864F` |
 
 Typography is **Manrope** for prose and interface and **IBM Plex Mono** for IDs and timestamps, with tabular numerals wherever values align. Motion is one system: Lenis smooth wheel scrolling driven from the GSAP ticker, masked line reveals for main headings, a 420ms section entrance, animated section dividers, a 220ms route transition, and a circular-reveal mobile menu — all immediate under reduced motion. Third-party motion sources are recorded in [`web/ATTRIBUTION.md`](web/ATTRIBUTION.md).
+
+<br />
+
+<img src=".github/readme/sec-08.svg" height="30" alt="" />
 
 ## Quick start
 
@@ -152,6 +177,10 @@ make all        # reproduce every number, figure, PDF and the demo site
 
 About 35 minutes on two cores, random seed 20260820 throughout. `make help` lists every target; the pipeline is ten plain scripts that can be rerun individually (`make episodes`, `make features`, `make train`, …). `analysis/20_train_shelterbuddy.py` trains and exports the model the web app actually serves.
 
+<br />
+
+<img src=".github/readme/sec-09.svg" height="30" alt="" />
+
 ## Repository layout
 
 ```
@@ -173,6 +202,10 @@ results/                 MEASURED_RESULTS.json, figures, tables
 sql/  infra/  scripts/   warehouse SQL, the SAM template, verification scripts
 ```
 
+<br />
+
+<img src=".github/readme/sec-10.svg" height="30" alt="" />
+
 ## Testing
 
 ```bash
@@ -182,6 +215,10 @@ make check                  # Python: lint, type check, 366 tests, 94% coverage
 ```
 
 The tests that matter most are the ones guarding silent errors: a wrong intake–outcome pairing, a floating timestamp compared to UTC, a rate divided by the wrong denominator, or a CSV cell that opens as a formula.
+
+<br />
+
+<img src=".github/readme/sec-11.svg" height="30" alt="" />
 
 ## The research behind it
 
@@ -202,6 +239,10 @@ Archive results (train through 2018, calibrate 2019, test 2020 – Jan 2022):
 
 `results/MEASURED_RESULTS.json` is the single source of truth for those figures; `scripts/verify_numbers.py` asserts that every document reproduces them.
 
+<br />
+
+<img src=".github/readme/sec-12.svg" height="30" alt="" />
+
 ## Limitations
 
 - **No behavioural data.** The strongest remaining signal is not in any public export.
@@ -210,11 +251,19 @@ Archive results (train through 2018, calibrate 2019, test 2020 – Jan 2022):
 - **One shelter, one city.** The workflow transfers; the model should be retrained and re-evaluated locally before use anywhere else.
 - **Dead-on-arrival records** are present in the current model's evaluation set; see How it works.
 
+<br />
+
+<img src=".github/readme/sec-13.svg" height="30" alt="" />
+
 ## Team
 
 **Built by Davis Higgins, Bennett Shearin, Seth Sumter, and Hunter Pace** — UNC Charlotte project team, DTSC 3601.
 
 SecondChance is a student research prototype. It is not affiliated with the Austin Animal Center, and an open intake record on the site does not confirm that an animal is available for adoption.
+
+<br />
+
+<img src=".github/readme/sec-14.svg" height="30" alt="" />
 
 ## Data, attribution and licence
 
