@@ -27,7 +27,9 @@ import type { DataStatus } from "@/lib/austin/status";
  *   opacity and transform only, never a delay on pointer events.
  *
  * Body and Lenis scrolling are stopped while it is open and released on
- * close, on navigation and on unmount, in that order of certainty.
+ * close, on navigation and on unmount, in that order of certainty. The sheet
+ * itself does not scroll either: no scrollbar, and wheel and touch-drag
+ * gestures are swallowed until it closes.
  */
 export function MobileMenu({
   open,
@@ -63,8 +65,14 @@ export function MobileMenu({
     if (!open) return;
     const main = document.getElementById("main");
     const footer = document.getElementById("site-footer");
+    const root = document.documentElement;
     const previousOverflow = document.body.style.overflow;
+    const previousRootOverflow = root.style.overflow;
     document.body.style.overflow = "hidden";
+    root.style.overflow = "hidden";
+    const blockScroll = (event: Event) => event.preventDefault();
+    document.addEventListener("wheel", blockScroll, { passive: false });
+    document.addEventListener("touchmove", blockScroll, { passive: false });
     scroll.stop();
     main?.setAttribute("inert", "");
     footer?.setAttribute("inert", "");
@@ -95,7 +103,10 @@ export function MobileMenu({
 
     return () => {
       document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("wheel", blockScroll);
+      document.removeEventListener("touchmove", blockScroll);
       document.body.style.overflow = previousOverflow;
+      root.style.overflow = previousRootOverflow;
       scroll.start();
       main?.removeAttribute("inert");
       footer?.removeAttribute("inert");
@@ -137,7 +148,7 @@ export function MobileMenu({
       aria-label={SHELL.menuTitle}
       aria-hidden={!open}
       data-open={open}
-      className="menu-sheet brand-band fixed inset-0 z-50 flex flex-col overflow-y-auto"
+      className="menu-sheet brand-band fixed inset-0 z-50 flex flex-col overflow-hidden overscroll-none"
       style={{ pointerEvents: open ? "auto" : "none", visibility: open ? "visible" : "hidden" }}
       data-lenis-prevent=""
     >
@@ -161,7 +172,7 @@ export function MobileMenu({
         </button>
       </div>
 
-      <nav aria-label="Primary" className="flex-1 px-5 pb-6 pt-2">
+      <nav aria-label="Primary" className="menu-sheet__nav flex-1 px-5 pb-6 pt-2">
         <MenuGroup items={work} startIndex={0} pathname={pathname} onNavigate={onClose} heading="Work" />
         <MenuGroup
           items={learn}
@@ -204,7 +215,7 @@ function MenuGroup({
   heading: string;
 }) {
   return (
-    <div className="mt-4">
+    <div className="menu-sheet__group mt-4">
       <p className="t-overline menu-sheet__item mb-1" style={{ transitionDelay: `${0.18 + startIndex * 0.05}s` }}>
         {heading}
       </p>
@@ -222,7 +233,7 @@ function MenuGroup({
                 href={item.href}
                 onClick={onNavigate}
                 aria-current={active ? "page" : undefined}
-                className="flex items-baseline gap-4 py-3.5"
+                className="menu-sheet__link flex items-baseline gap-4 py-3.5"
                 style={{ color: active ? "var(--brand-band-accent)" : "var(--brand-band-ink)" }}
               >
                 <span className="t-caption tabular w-6 shrink-0" style={{ color: "var(--brand-band-ink-muted)" }}>
@@ -230,7 +241,7 @@ function MenuGroup({
                 </span>
                 <span className="min-w-0">
                   <span className="t-title block">{item.label}</span>
-                  <span className="t-small block" style={{ color: "var(--brand-band-ink-muted)" }}>
+                  <span className="menu-sheet__desc t-small block" style={{ color: "var(--brand-band-ink-muted)" }}>
                     {item.description}
                   </span>
                 </span>

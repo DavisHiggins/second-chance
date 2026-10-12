@@ -677,6 +677,35 @@ html.js .reveal-text[data-reveal="pending"][data-scroll="true"] .split-line {
   transform: none;
 }
 
+/* The sheet never scrolls, so on short screens it gives up detail to fit:
+   first the one-line descriptions, then row spacing, and on landscape phones
+   the three groups sit side by side. Tall screens are unchanged. */
+@media (max-height: 919px) {
+  .menu-sheet__desc {
+    display: none;
+  }
+}
+@media (max-height: 759px) {
+  .menu-sheet__link {
+    padding-block: 8px;
+  }
+  .menu-sheet__group {
+    margin-top: 8px;
+  }
+}
+@media (max-height: 539px) {
+  .menu-sheet__nav {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 24px;
+    padding-top: 0;
+    padding-bottom: 8px;
+  }
+  .menu-sheet__link {
+    padding-block: 6px;
+  }
+}
+
 /* Buttons. One set of variants for the whole product. */
 .btn {
   display: inline-flex;
