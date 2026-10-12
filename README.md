@@ -8,8 +8,6 @@
 
 A predictive analytics project built at UNC Charlotte that reads the City of Austin's public shelter records, estimates which animals may wait longest, and turns that into a practical outreach plan — so attention goes to animals earlier, never away from them.
 
-<p align="center"><a href="https://secondc.vercel.app"><img src=".github/readme/btn-open.svg" height="44" alt="Open SecondChance" /></a>&nbsp;<a href="https://www.higginsd.com/work/secondchance"><img src=".github/readme/btn-case.svg" height="44" alt="Case study" /></a>&nbsp;<a href="https://davishiggins.com"><img src=".github/readme/btn-dh.svg" height="44" alt="Davis Higgins" /></a></p>
-
 <p align="center"><a href="https://secondc.vercel.app"><img src=".github/readme/badge-live.svg" height="30" alt="Live site" /></a>&nbsp;<a href="LICENSE"><img src=".github/readme/badge-license.svg" height="30" alt="License: MIT" /></a>&nbsp;<a href="web"><img src=".github/readme/badge-nextjs.svg" height="30" alt="Next.js 15" /></a>&nbsp;<a href="pyproject.toml"><img src=".github/readme/badge-python.svg" height="30" alt="Python 3.11" /></a>&nbsp;<a href="https://data.austintexas.gov/"><img src=".github/readme/badge-data.svg" height="30" alt="Data: City of Austin" /></a></p>
 
 </div>
