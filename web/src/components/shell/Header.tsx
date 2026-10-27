@@ -19,13 +19,23 @@ import type { MetricDefinition } from "@/lib/austin/metrics";
 /**
  * The header.
  *
- * Layout: logo left, navigation centre where it fits, one status control and
- * the theme switch right. The breakpoints follow the content: the four work
- * links and a "Learn" disclosure need about 1024px beside the logo and the
- * controls, so below `lg` the navigation lives in the mobile sheet, which
- * lists all seven destinations. Nothing is rendered twice: the sheet is the
- * only navigation below `lg`, and the chip in the header is the only status
+ * Layout: logo left, navigation centre where it fits, one status control,
+ * the GitHub link and the theme switch right. The breakpoints follow the
+ * content, measured rather than guessed: the four work links, "Learn" and
+ * Contact are about 625px wide on one line, the logo 165px and the two icon
+ * buttons 88px, so with the gaps the row needs about 1150px once the status
+ * chip is added. Below `xl` the navigation lives in the mobile sheet, which
+ * lists all eight destinations. Nothing is rendered twice: the sheet is the
+ * only navigation below `xl`, and the chip in the header is the only status
  * control above it.
+ *
+ * The chip's age ("last published about 8 hours ago") is another 200px. It
+ * is shown only where it fits on one line (`lg` to `xl`, where the burger
+ * replaces the links); beside the full navigation the chip shows its label
+ * alone and the age stays in its tooltip, screen-reader text and the data
+ * drawer it opens. Every label in the row is `whitespace-nowrap`: a header
+ * that wraps is a header that is out of room, and that should be fixed with a
+ * breakpoint, not absorbed by a second line.
  *
  * The model version no longer occupies the main row. It is in the data
  * drawer and on How it works, where a version string has context.
@@ -77,7 +87,7 @@ function NavLink({ href, label, active }: { href: string; label: string; active:
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className="t-small relative inline-flex h-11 items-center rounded-[var(--radius-sm)] px-2.5 font-medium transition-colors"
+      className="t-small relative inline-flex h-11 items-center whitespace-nowrap rounded-[var(--radius-sm)] px-2.5 font-medium transition-colors"
       style={{ color: active ? "var(--ink-primary)" : "var(--ink-secondary)" }}
     >
       {label}
@@ -132,7 +142,7 @@ function LearnMenu({ pathname }: { pathname: string }) {
         aria-controls="learn-menu"
         aria-haspopup="true"
         onClick={() => setOpen((value) => !value)}
-        className="t-small relative inline-flex h-11 items-center gap-1 rounded-[var(--radius-sm)] px-2.5 font-medium"
+        className="t-small relative inline-flex h-11 items-center gap-1 whitespace-nowrap rounded-[var(--radius-sm)] px-2.5 font-medium"
         style={{ color: groupActive ? "var(--ink-primary)" : "var(--ink-secondary)" }}
       >
         {SHELL.learnGroup}
@@ -234,7 +244,7 @@ export function Header({
         <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-3 px-4 sm:px-6 lg:px-10">
           <Wordmark />
 
-          <nav aria-label="Primary" className="ml-4 hidden items-center gap-0.5 lg:flex">
+          <nav aria-label="Primary" className="ml-4 hidden shrink-0 items-center gap-0.5 xl:flex">
             {work.map((item) => (
               <NavLink
                 key={item.href}
@@ -256,12 +266,17 @@ export function Header({
 
           <div className="flex-1" />
 
-          {/* One status control per viewport: compact below md, full above. */}
-          <div className="hidden md:block">
-            <FreshnessChip status={status} onOpenDetails={openDetails} />
-          </div>
-          <div className="md:hidden">
+          {/* One status control per viewport: compact below md; the label
+              alone where the navigation needs the room (md to lg, and from
+              xl); the label and its age from lg to xl, where it fits. */}
+          <div className="whitespace-nowrap md:hidden">
             <FreshnessChip status={status} onOpenDetails={openDetails} compact />
+          </div>
+          <div className="hidden whitespace-nowrap md:block lg:hidden xl:block">
+            <FreshnessChip status={status} onOpenDetails={openDetails} showAge={false} />
+          </div>
+          <div className="hidden whitespace-nowrap lg:block xl:hidden">
+            <FreshnessChip status={status} onOpenDetails={openDetails} />
           </div>
 
           <a
@@ -308,7 +323,7 @@ export function Header({
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
             aria-label={menuOpen ? SHELL.closeMenu : SHELL.openMenu}
-            className="burger rounded-[var(--radius-md)] border lg:hidden"
+            className="burger rounded-[var(--radius-md)] border xl:hidden"
             style={{
               borderColor: "var(--border-hairline)",
               background: "var(--surface-card)",

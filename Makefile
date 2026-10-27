@@ -23,7 +23,7 @@ OUTCOMES := $(RAW)/aac_outcomes_20220304.csv
 WEATHER  := $(RAW)/austin_weather_USW00013958.csv
 
 .DEFAULT_GOAL := help
-.PHONY: help setup data episodes features train ablations survival interpret drift \
+.PHONY: help setup data sample quickstart episodes features train ablations survival interpret drift \
         timefeatures figures export analysis all test lint format typecheck verify check \
         docs deck demo baseline dictionary package clean clean-results
 
@@ -48,6 +48,15 @@ data:  ## Download the raw inputs (only needed once)
 	@test -f $(WEATHER)  || curl -fsSL -o $(WEATHER) \
 	  https://media.githubusercontent.com/media/radames/dataset-historical-daily-temperature-210-US/main/USW00013958.csv
 	@wc -l $(RAW)/*.csv
+
+# --- the small-dataset demo ---------------------------------------------------
+# Runs in seconds on the committed synthetic sample in data/sample/. See bin/.
+
+sample:  ## Regenerate the small synthetic sample in data/sample/
+	$(PYTHON) bin/make_sample_data.py
+
+quickstart:  ## Train and evaluate a model on the small sample, in seconds
+	$(PYTHON) bin/quickstart.py
 
 # --- the analysis pipeline, in order -----------------------------------------
 # Every step below is a plain script with no arguments. They read from data/ and
@@ -121,10 +130,10 @@ test:  ## Run the test suite with coverage
 	$(PYTHON) -m pytest tests/ --cov=src/secondchance --cov-report=term-missing
 
 lint:  ## Check formatting and style (PEP 8 and PEP 257)
-	$(PYTHON) -m ruff check src tests analysis scripts
+	$(PYTHON) -m ruff check src tests analysis scripts bin
 
 format:  ## Apply the safe automatic fixes
-	$(PYTHON) -m ruff check src tests analysis scripts --fix
+	$(PYTHON) -m ruff check src tests analysis scripts bin --fix
 
 typecheck:  ## Static type check
 	$(PYTHON) -m mypy src/secondchance

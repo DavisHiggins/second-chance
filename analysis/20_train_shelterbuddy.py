@@ -35,9 +35,9 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -544,7 +544,7 @@ def calibration_line(y_true: np.ndarray, y_prob: np.ndarray) -> tuple[float | No
 
 
 def metrics_for(y_true: np.ndarray, y_prob: np.ndarray) -> dict[str, Any]:
-    n = int(len(y_true))
+    n = len(y_true)
     result: dict[str, Any] = {
         "n": n,
         "positiveRate": float(y_true.mean()) if n else 0.0,
@@ -627,7 +627,7 @@ def subgroup_metrics(
                 {
                     "attribute": attribute,
                     "level": str(level),
-                    "n": int(len(group)),
+                    "n": len(group),
                     "positiveRate": float(gy.mean()),
                     "rocAuc": auc,
                     "meanPredicted": float(gp.mean()),
@@ -705,7 +705,7 @@ def train_target(
 
     gains = model.booster_.feature_importance(importance_type="gain")
     importance = sorted(
-        ({"feature": name, "gain": float(gain)} for name, gain in zip(feature_names, gains)),
+        ({"feature": name, "gain": float(gain)} for name, gain in zip(feature_names, gains, strict=True)),
         key=lambda item: item["gain"],
         reverse=True,
     )[:15]
@@ -766,7 +766,7 @@ def main() -> None:
     print("Fetching current Austin feeds...")
     intakes = fetch_dataset(CURRENT_INTAKES_ID, INTAKE_COLUMNS)
     outcomes = fetch_dataset(CURRENT_OUTCOMES_ID, OUTCOME_COLUMNS)
-    retrieved_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    retrieved_at = datetime.now(UTC).replace(microsecond=0).isoformat()
     print(f"  intakes={len(intakes)} outcomes={len(outcomes)}")
 
     episodes, join_counts = build_episodes(intakes, outcomes)
@@ -828,7 +828,7 @@ def main() -> None:
         )
 
     version = f"sc-sb-{latest_intake.date().isoformat()}-v1"
-    trained_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    trained_at = datetime.now(UTC).replace(microsecond=0).isoformat()
 
     artifact = {
         "schemaVersion": SCHEMA_VERSION,

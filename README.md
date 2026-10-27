@@ -19,10 +19,13 @@ A predictive analytics project built at UNC Charlotte that reads the City of Aus
 <a href="#what-secondchance-does"><img src=".github/readme/toc-01.svg" width="400" alt="01 What SecondChance does" /></a>&nbsp;<a href="#the-one-rule"><img src=".github/readme/toc-02.svg" width="400" alt="02 The one rule" /></a><br />
 <a href="#the-pages"><img src=".github/readme/toc-03.svg" width="400" alt="03 The pages" /></a>&nbsp;<a href="#how-the-data-flows"><img src=".github/readme/toc-04.svg" width="400" alt="04 How the data flows" /></a><br />
 <a href="#the-model"><img src=".github/readme/toc-05.svg" width="400" alt="05 The model" /></a>&nbsp;<a href="#what-the-numbers-mean"><img src=".github/readme/toc-06.svg" width="400" alt="06 What the numbers mean" /></a><br />
-<a href="#brand-and-design-system"><img src=".github/readme/toc-07.svg" width="400" alt="07 Brand and design system" /></a>&nbsp;<a href="#quick-start"><img src=".github/readme/toc-08.svg" width="400" alt="08 Quick start" /></a><br />
-<a href="#repository-layout"><img src=".github/readme/toc-09.svg" width="400" alt="09 Repository layout" /></a>&nbsp;<a href="#testing"><img src=".github/readme/toc-10.svg" width="400" alt="10 Testing" /></a><br />
-<a href="#the-research-behind-it"><img src=".github/readme/toc-11.svg" width="400" alt="11 The research behind it" /></a>&nbsp;<a href="#limitations"><img src=".github/readme/toc-12.svg" width="400" alt="12 Limitations" /></a><br />
-<a href="#team"><img src=".github/readme/toc-13.svg" width="400" alt="13 Team" /></a>&nbsp;<a href="#data-attribution-and-licence"><img src=".github/readme/toc-14.svg" width="400" alt="14 Data, attribution and licence" /></a><br />
+<a href="#brand-and-design-system"><img src=".github/readme/toc-07.svg" width="400" alt="07 Brand and design system" /></a>&nbsp;<a href="#installation"><img src=".github/readme/toc-08.svg" width="400" alt="08 Installation" /></a><br />
+<a href="#get-started"><img src=".github/readme/toc-09.svg" width="400" alt="09 Get started" /></a>&nbsp;<a href="#example-code"><img src=".github/readme/toc-10.svg" width="400" alt="10 Example code" /></a><br />
+<a href="#documentation"><img src=".github/readme/toc-11.svg" width="400" alt="11 Documentation" /></a>&nbsp;<a href="#full-pipeline-and-web-app"><img src=".github/readme/toc-12.svg" width="400" alt="12 Full pipeline and web app" /></a><br />
+<a href="#repository-layout"><img src=".github/readme/toc-13.svg" width="400" alt="13 Repository layout" /></a>&nbsp;<a href="#testing"><img src=".github/readme/toc-14.svg" width="400" alt="14 Testing" /></a><br />
+<a href="#the-research-behind-it"><img src=".github/readme/toc-15.svg" width="400" alt="15 The research behind it" /></a>&nbsp;<a href="#limitations"><img src=".github/readme/toc-16.svg" width="400" alt="16 Limitations" /></a><br />
+<a href="#team"><img src=".github/readme/toc-17.svg" width="400" alt="17 Team" /></a>&nbsp;<a href="#contact"><img src=".github/readme/toc-18.svg" width="400" alt="18 Contact" /></a><br />
+<a href="#data-attribution-and-licence"><img src=".github/readme/toc-19.svg" width="400" alt="19 Data, attribution and licence" /></a><br />
 </p>
 
 </details>
@@ -151,7 +154,185 @@ Typography is **Manrope** for prose and interface and **IBM Plex Mono** for IDs 
 
 <img src=".github/readme/sec-08.svg" height="30" alt="" />
 
-## Quick start
+## Installation
+
+### Requirements
+
+| Tool | Version | Needed for |
+|---|---|---|
+| Python | 3.11 or newer (CI runs 3.11) | the library, the `bin/` examples, the research pipeline |
+| pip | 23 or newer | installing the Python libraries below |
+| Node.js and npm | Node 20 or newer | only the web app in `web/` |
+| GNU Make | any | optional; wraps the commands below as `make setup`, `make quickstart`, `make all` |
+
+### Required libraries
+
+The runtime libraries are declared in [`pyproject.toml`](pyproject.toml) and installed automatically by `pip install -e .`:
+
+| Library | Version | Used for |
+|---|---|---|
+| `numpy` | ≥ 1.26 | arrays, metrics, bootstrap resampling |
+| `pandas` | ≥ 2.1 | loading the Austin CSVs, episode pairing, the feature matrix |
+| `pyarrow` | ≥ 14.0 | reading and writing parquet files |
+| `scikit-learn` | ≥ 1.4 | preprocessing, logistic regression, isotonic calibration, metrics |
+| `lightgbm` | ≥ 4.1 | the production gradient-boosted model |
+| `xgboost` | ≥ 2.0 | the comparison model |
+| `lifelines` | ≥ 0.28 | Kaplan-Meier, Aalen-Johansen and Cox survival models |
+| `scipy` | ≥ 1.11 | KS test and statistics |
+| `joblib` | ≥ 1.3 | saving and loading fitted models |
+
+Optional extras: **`[analysis]`** adds `shap`, `matplotlib` and `statsmodels` for the figures and interpretability scripts; **`[dev]`** adds `pytest`, `pytest-cov`, `ruff` and `mypy`; **`[docs]`** builds the PDFs; **`[aws]`** adds `boto3` for the deployed pipeline.
+
+### Install
+
+```bash
+git clone https://github.com/DavisHiggins/second-chance.git
+cd second-chance
+
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+
+python -m pip install --upgrade pip
+pip install -e .                   # the required libraries above; enough for bin/ and the CLI
+pip install -e ".[analysis,dev]"   # optional: figures, tests, linting (`make setup` installs these plus [docs])
+```
+
+Or install the required libraries directly, without the package:
+
+```bash
+pip install "numpy>=1.26" "pandas>=2.1" "pyarrow>=14.0" "scikit-learn>=1.4" "lightgbm>=4.1" \
+            "xgboost>=2.0" "lifelines>=0.28" "scipy>=1.11" "joblib>=1.3"
+```
+
+Check that it worked:
+
+```bash
+secondchance --help
+python -c "import secondchance, lightgbm, sklearn; print('SecondChance is installed')"
+```
+
+For the web app:
+
+```bash
+cd web
+npm ci                             # exact versions from package-lock.json
+```
+
+> **macOS:** LightGBM needs the OpenMP runtime. If `import lightgbm` fails, run `brew install libomp`.
+
+<br />
+
+<img src=".github/readme/sec-09.svg" height="30" alt="" />
+
+## Get started
+
+Train and evaluate a model on a small dataset in about a second — no download, no credentials:
+
+```bash
+python bin/quickstart.py           # or: make quickstart
+```
+
+It runs on the committed sample in [`data/sample/`](data/sample) (about 3,200 synthetic intakes from 2016 to March 2022, in exactly the City of Austin export format) and walks the full pipeline with the same library functions the 35-minute study uses:
+
+```
+[1-3] 3,179 intakes + 3,140 outcomes -> 3,179 episodes (39 still open at the cutoff)
+[4-5] 56 intake-time feature columns; cohort of 2,987 cat and dog episodes (192 excluded)
+[6]   split: train 1,459, valid 438, test 994
+[7-8] lightgbm on adopted_within_30d, held-out test block:
+        n              994
+        positive_rate  0.6046
+        roc_auc        0.7254
+        pr_auc         0.7602
+        brier          0.2017
+        ece            0.0389
+        lift_at_50     1.4554
+[9]   model -> results/quickstart/adopted_within_30d_lightgbm.joblib
+      queue -> results/quickstart/adopted_within_30d_support_queue.csv
+```
+
+1. **Episodes** — each arrival is paired with the outcome that closed it; animals still in care become censored stays.
+2. **Labels** — `adopted_within_{7,14,30}d` and `long_stay_60d`; a label that cannot be known yet stays empty.
+3. **Features** — up to 56 intake-time columns: age, intake type and condition, calendar, shelter load, structured breed (the weather block is skipped when no weather file is given).
+4. **Split** — train before 2019, calibrate on 2019, test on 2020–2021. Never random.
+5. **Train, calibrate, evaluate** — LightGBM with isotonic calibration, scored on the untouched test block.
+6. **Queue** — the test animals ranked by who may need extra support first.
+
+Try another target or model:
+
+```bash
+python bin/quickstart.py --target long_stay_60d
+python bin/quickstart.py --model logistic           # prior | logistic | lightgbm | xgboost
+bash bin/quickstart_cli.sh                          # the same steps through the `secondchance` CLI
+```
+
+The same thing from Python:
+
+```python
+import pandas as pd
+from secondchance.episodes import load_intakes, load_outcomes, build_episodes, label_horizons
+from secondchance.features import build_features, build_cohort, DEPLOYMENT_FEATURES
+from secondchance.modeling import DEFAULT_SPLIT, make_model, fit_calibrated, evaluate_binary
+
+cutoff = pd.Timestamp("2022-03-04 11:25:00")
+episodes, audit = build_episodes(load_intakes("data/sample/aac_intakes_sample.csv"),
+                                 load_outcomes("data/sample/aac_outcomes_sample.csv"), cutoff)
+cohort, _ = build_cohort(build_features(label_horizons(episodes, data_cutoff=cutoff)))
+cohort["block"] = DEFAULT_SPLIT.assign(cohort["intake_datetime"])
+
+target = "adopted_within_30d"
+data = cohort[cohort[target].notna()]
+train, valid, test = (data[data.block == b] for b in ("train", "valid", "test"))
+cols = [c for c in DEPLOYMENT_FEATURES if train[c].notna().any()]
+
+_, model = fit_calibrated(make_model("lightgbm", cols),
+                          train[cols], train[target].to_numpy(), valid[cols], valid[target].to_numpy())
+print(evaluate_binary(test[target].to_numpy(), model.predict_proba(test[cols])[:, 1])["roc_auc"])  # 0.725
+```
+
+> The sample animals are synthetic — generated by [`bin/make_sample_data.py`](bin/make_sample_data.py) with a planted, plausible signal — so the code has something real to learn. Use them to run the code, never to quote findings. Every figure in this README outside this section comes from the real Austin data.
+
+<br />
+
+<img src=".github/readme/sec-10.svg" height="30" alt="" />
+
+## Example code
+
+Runnable examples live in [`bin/`](bin), documented in [`bin/README.md`](bin/README.md). Each runs from the repository root on the sample data in seconds, and takes `--intakes` / `--outcomes` to run on the full archive instead.
+
+| Script | What it shows |
+|---|---|
+| [`bin/quickstart.py`](bin/quickstart.py) | **Start here.** Episodes → labels → features → split → train → calibrate → evaluate → ranked support queue |
+| [`bin/quickstart_cli.sh`](bin/quickstart_cli.sh) | The same pipeline through the `secondchance` CLI: `audit`, `build`, `train`, `score` |
+| [`bin/survival_example.py`](bin/survival_example.py) | Time to adoption with competing risks: why Kaplan-Meier overstates adoption and Aalen-Johansen does not |
+| [`bin/drift_example.py`](bin/drift_example.py) | Population stability index and KS checks between the calibration year and a later year |
+| [`bin/make_sample_data.py`](bin/make_sample_data.py) | Regenerates the synthetic sample, byte-identical every run |
+
+<br />
+
+<img src=".github/readme/sec-11.svg" height="30" alt="" />
+
+## Documentation
+
+**[`docs/API_REFERENCE.md`](docs/API_REFERENCE.md)** documents every major function — what it does, how it works, its arguments and return values, with an example — in the order the pipeline runs:
+
+| Module | Major functions | What they do |
+|---|---|---|
+| [`secondchance.episodes`](docs/API_REFERENCE.md#2-episodes--secondchanceepisodes) | `load_intakes`, `load_outcomes`, `build_episodes`, `label_horizons` | Pair arrivals with departures; attach targets without confusing censored with negative |
+| [`secondchance.features`](docs/API_REFERENCE.md#3-features--secondchancefeatures) | `build_features`, `add_shelter_context`, `build_cohort` | 58 intake-time features; shelter occupancy by a linear sweep; one shared cohort |
+| [`secondchance.labeling`](docs/API_REFERENCE.md#4-breed-structuring--secondchancelabeling) | `structure_breed`, `structure_breed_rules` | Free-text breed → size, coat, energy and flag features |
+| [`secondchance.modeling`](docs/API_REFERENCE.md#5-modelling-and-evaluation--secondchancemodeling) | `make_model`, `fit_calibrated`, `evaluate_binary`, `subgroup_metrics` | Temporal split, LightGBM + isotonic calibration, AUC / ECE / lift, subgroup checks |
+| [`secondchance.survival`](docs/API_REFERENCE.md#6-survival-analysis--secondchancesurvival) | `kaplan_meier`, `cumulative_incidence`, `fit_cox` | Time to adoption with competing risks |
+| [`secondchance.monitor.drift`](docs/API_REFERENCE.md#7-drift-monitoring--secondchancemonitordrift) | `population_stability_index`, `feature_drift_report` | Is today's intake population still the one the model was calibrated on? |
+| [`secondchance.cli`](docs/API_REFERENCE.md#9-command-line-tool--secondchancecli) | `audit`, `build`, `train`, `score`, `monitor` | The pipeline from the command line |
+| [`web/src/lib`](docs/API_REFERENCE.md#11-web-app-modules-typescript) | `buildShelterBuddyEpisodes`, `scoreEpisodes`, `buildPlan` | The live site's data path, scoring and planner in TypeScript |
+
+Further documentation in [`docs/`](docs): the [model card](docs/01_MODEL_CARD.md), [data dictionary](docs/04_DATA_DICTIONARY.md), [decision log](docs/05_DECISION_LOG.md), [AWS runbook](docs/02_AWS_SETUP_RUNBOOK.md), [cost model](docs/03_COST_MODEL.md) and [LLM evaluation](docs/06_LLM_EVALUATION.md). Every module and function in `src/` also carries a docstring explaining what it does and why.
+
+<br />
+
+<img src=".github/readme/sec-12.svg" height="30" alt="" />
+
+## Full pipeline and web app
 
 ### The web app
 
@@ -179,13 +360,13 @@ About 35 minutes on two cores, random seed 20260820 throughout. `make help` list
 
 <br />
 
-<img src=".github/readme/sec-09.svg" height="30" alt="" />
+<img src=".github/readme/sec-13.svg" height="30" alt="" />
 
 ## Repository layout
 
 ```
 web/                     the Next.js 15 application (App Router, React 19, TypeScript strict, Tailwind v4)
-  src/app/                 routes: /, /queue, /discover, /discover/[id], /planner, /impact, /model, /about
+  src/app/                 routes: /, /queue, /discover, /discover/[id], /planner, /impact, /model, /about, /contact
   src/components/          shell, motion primitives, dashboard, queue, discover, planner, model, ui
   src/lib/austin/          Socrata client, schemas, episode pairing, inventory, metrics, time, status
   src/lib/model/           artifact types, feature derivation, tree evaluator, horizon labels, presentation
@@ -194,9 +375,12 @@ web/                     the Next.js 15 application (App Router, React 19, TypeS
   src/data/model/          the committed model artifact
   tests/                   vitest: episodes, model parity, time/status, metrics, planner/CSV
 src/secondchance/        the Python library behind the archive study and the trainer
+bin/                     runnable examples: quickstart, CLI walkthrough, survival, drift, sample generator
+data/sample/             small synthetic dataset in the Austin export format, for the quickstart
+data/reference/          the structured breed reference used by the breed features
 analysis/                the numbered research scripts, plus 20_train_shelterbuddy.py
-tests/                   366 Python tests
-docs/                    model card, runbook, cost model, data dictionary, decision log, upgrade checklist
+tests/                   373 Python tests
+docs/                    API reference, model card, runbook, cost model, data dictionary, decision log
 deliverables/            paper, literature review, reviews, outline, work plan (built to PDF)
 results/                 MEASURED_RESULTS.json, figures, tables
 sql/  infra/  scripts/   warehouse SQL, the SAM template, verification scripts
@@ -204,21 +388,22 @@ sql/  infra/  scripts/   warehouse SQL, the SAM template, verification scripts
 
 <br />
 
-<img src=".github/readme/sec-10.svg" height="30" alt="" />
+<img src=".github/readme/sec-14.svg" height="30" alt="" />
 
 ## Testing
 
 ```bash
 cd web && npm test          # 58 unit tests: episodes, model parity, Austin time and freshness,
                             # cohort metrics, horizon labels, planner maths, CSV safety
-make check                  # Python: lint, type check, 366 tests, 94% coverage
+make check                  # Python: lint, type check, 373 tests, 95% coverage
+pytest tests/test_bin_examples.py   # just the bin/ examples, in seconds
 ```
 
 The tests that matter most are the ones guarding silent errors: a wrong intake–outcome pairing, a floating timestamp compared to UTC, a rate divided by the wrong denominator, or a CSV cell that opens as a formula.
 
 <br />
 
-<img src=".github/readme/sec-11.svg" height="30" alt="" />
+<img src=".github/readme/sec-15.svg" height="30" alt="" />
 
 ## The research behind it
 
@@ -241,7 +426,7 @@ Archive results (train through 2018, calibrate 2019, test 2020 – Jan 2022):
 
 <br />
 
-<img src=".github/readme/sec-12.svg" height="30" alt="" />
+<img src=".github/readme/sec-16.svg" height="30" alt="" />
 
 ## Limitations
 
@@ -253,7 +438,7 @@ Archive results (train through 2018, calibrate 2019, test 2020 – Jan 2022):
 
 <br />
 
-<img src=".github/readme/sec-13.svg" height="30" alt="" />
+<img src=".github/readme/sec-17.svg" height="30" alt="" />
 
 ## Team
 
@@ -263,7 +448,24 @@ SecondChance is a student research prototype. It is not affiliated with the Aust
 
 <br />
 
-<img src=".github/readme/sec-14.svg" height="30" alt="" />
+<img src=".github/readme/sec-18.svg" height="30" alt="" />
+
+## Contact
+
+Questions about the code, the data, the model, or using the approach at another shelter:
+
+| | |
+|---|---|
+| **Project lead** | Davis Higgins — [davishiggins@icloud.com](mailto:davishiggins@icloud.com) · [LinkedIn](https://www.linkedin.com/in/davishiggins) |
+| **Team** | Davis Higgins, Bennett Shearin, Seth Sumter, Hunter Pace — UNC Charlotte, DTSC 3601 |
+| **Bugs and feature requests** | [Open an issue](https://github.com/DavisHiggins/second-chance/issues) on this repository |
+| **On the web** | The [Contact page](https://secondc.vercel.app/contact) on the live site |
+
+For questions about a specific animal, contact the [Austin Animal Center](https://www.austintexas.gov/department/aac) directly: SecondChance is not affiliated with the shelter.
+
+<br />
+
+<img src=".github/readme/sec-19.svg" height="30" alt="" />
 
 ## Data, attribution and licence
 
@@ -271,7 +473,7 @@ SecondChance is a student research prototype. It is not affiliated with the Aust
 - Motion components adapted from a privately licensed pack are documented, with original paths and every change, in [`web/ATTRIBUTION.md`](web/ATTRIBUTION.md). They are not redistributed.
 - Manrope and IBM Plex Mono, SIL Open Font License 1.1.
 
-The source code in this repository is released under the [MIT License](LICENSE).
+The source code in this repository is released under the **MIT License** — see the [`LICENSE`](LICENSE) file for the full text.
 
 <p align="center"><img src=".github/readme/footer.svg" width="100%" alt="SecondChance" /></p>
 

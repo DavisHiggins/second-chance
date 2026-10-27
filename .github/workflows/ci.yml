@@ -49,7 +49,7 @@ jobs:
           pip install -e ".[analysis,dev]"
 
       - name: Lint (PEP 8 and PEP 257)
-        run: ruff check src tests analysis scripts
+        run: ruff check src tests analysis scripts bin
 
       - name: Type check
         run: mypy src/secondchance

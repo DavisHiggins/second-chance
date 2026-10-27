@@ -42,12 +42,16 @@ export function FreshnessChip({
   status,
   onOpenDetails,
   compact = false,
+  showAge = true,
   onBand = false,
 }: {
   status: DataStatus;
   onOpenDetails?: () => void;
   /** Icon and short label only, for narrow headers. */
   compact?: boolean;
+  /** Show "· last published …" after the label. Off where the header needs
+   *  the room; the age then stays in the tooltip and screen-reader text. */
+  showAge?: boolean;
   /** Drawn on the navy band. */
   onBand?: boolean;
 }) {
@@ -86,12 +90,17 @@ export function FreshnessChip({
             ? ` · data from ${stamp.time}`
             : "";
 
+  // When the age is not drawn, it moves into the tooltip rather than vanishing.
+  const tooltip = [compact || !showAge ? `${label}${detail}` : null, status.problem]
+    .filter(Boolean)
+    .join(". ");
+
   const content = (
     <>
       <StatusIcon tone={tone} size={14} label={`Data status: ${label}`} />
       <span className={compact ? "sr-only sm:not-sr-only" : ""}>
         {label}
-        {compact ? "" : detail}
+        {compact || !showAge ? "" : detail}
       </span>
       {stamp ? <span className="sr-only">{` Published ${stamp.time}.`}</span> : null}
       {status.problem ? <span className="sr-only">{` ${status.problem}`}</span> : null}
@@ -116,7 +125,7 @@ export function FreshnessChip({
 
   if (!onOpenDetails) {
     return (
-      <span className={className} style={style} title={status.problem ?? undefined}>
+      <span className={className} style={style} title={tooltip || undefined}>
         {content}
       </span>
     );
@@ -128,7 +137,7 @@ export function FreshnessChip({
       onClick={onOpenDetails}
       className={`${className} text-left`}
       style={style}
-      title={status.problem ?? "Where this data comes from"}
+      title={tooltip || "Where this data comes from"}
       aria-haspopup="dialog"
     >
       {content}

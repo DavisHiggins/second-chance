@@ -623,14 +623,19 @@ html.js .reveal-text[data-reveal="pending"][data-scroll="true"] .split-line {
 }
 
 /* Two-line hamburger that becomes an X. The lines are children of one
-   button so it stays a single focusable element with one label. */
-.burger {
-  position: relative;
-  display: inline-flex;
-  width: 44px;
-  height: 44px;
-  align-items: center;
-  justify-content: center;
+   button so it stays a single focusable element with one label.
+   Layered so a responsive `xl:hidden` on the button can win: an unlayered
+   `display` here beats every Tailwind utility, which left the burger showing
+   beside the full navigation and squeezed the links onto two lines. */
+@layer components {
+  .burger {
+    position: relative;
+    display: inline-flex;
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+  }
 }
 .burger__line {
   position: absolute;

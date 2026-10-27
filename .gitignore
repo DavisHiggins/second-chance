@@ -13,6 +13,9 @@ results/tables/
 results/figures/
 results/*.html
 results/baseline_statistics.json
+# Outputs of the bin/ quickstart demos, rebuilt in seconds.
+results/quickstart/
+results/quickstart_cli/
 !results/MEASURED_RESULTS.json
 
 # Model artefacts
