@@ -79,3 +79,10 @@ SecondChance_project.zip
 
 # Kept locally, not published.
 deliverables/
+
+# Claude Code handoff and build-spec files. Kept locally, not published.
+SECONDCHANCE_MASTER_CLAUDE_HANDOFF.md
+SecondChance-Claude-Code-Upgrade.md
+docs/WEB_BUILD_HANDOFF.md
+docs/08_UPGRADE_CHECKLIST.md
+website_build_package/*.md
