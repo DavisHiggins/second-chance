@@ -18,13 +18,12 @@ import type { MetricDefinition } from "@/lib/austin/metrics";
 /**
  * The header.
  *
- * Layout: a three-column grid. The logo sits in the left column, the
- * navigation in the centre column, and the status chip, the GitHub link and
- * the menu button in the right column. The two outer columns are `1fr` with
- * an `auto` minimum, so the links sit on the true centre of the page whenever
- * the outer clusters fit in equal halves, and give way rather than overlap
- * when they do not. The links are about 625px on one line, so they appear
- * from `xl`; below it the menu sheet is the navigation.
+ * Layout: the logo on the left; the status chip, the GitHub link and the
+ * menu button on the right; the navigation between them, with an equal
+ * flexible spacer on each side. The links therefore sit exactly halfway
+ * between the logo and the status chip at every width, whatever the chip's
+ * age text happens to say. The links are about 625px on one line, so they
+ * appear from `xl`; below it the menu sheet is the navigation.
  *
  * The menu button is shown at every width. It opens the sheet that holds all
  * eight destinations, the data status, the contact links and the theme
@@ -52,7 +51,7 @@ function Wordmark() {
     <Link
       href="/"
       aria-label={`${label} home`}
-      className="t-subtitle inline-flex h-11 shrink-0 items-center gap-2 rounded-[var(--radius-sm)] pr-1 font-semibold"
+      className="t-subtitle inline-flex h-11 shrink-0 items-center gap-2 rounded-[var(--radius-sm)] font-semibold"
     >
       <Image
         src="/logo-mark.png"
@@ -240,12 +239,13 @@ export function Header({
           borderColor: scrolled ? "var(--border-hairline)" : "transparent",
         }}
       >
-        <div className="mx-auto grid h-16 max-w-[1440px] grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 sm:px-6 lg:px-10">
-          <div className="flex min-w-0 items-center justify-self-start">
-            <Wordmark />
-          </div>
+        <div className="mx-auto flex h-16 max-w-[1440px] items-center px-4 sm:px-6 lg:px-10">
+          <Wordmark />
 
-          <nav aria-label="Primary" className="hidden items-center gap-0.5 xl:flex">
+          {/* Equal spacers either side of the links centre them between the
+              logo and the status chip. */}
+          <span className="min-w-3 flex-1" aria-hidden="true" />
+          <nav aria-label="Primary" className="hidden shrink-0 items-center gap-0.5 xl:flex">
             {work.map((item) => (
               <NavLink
                 key={item.href}
@@ -264,10 +264,9 @@ export function Header({
               />
             ))}
           </nav>
-          {/* Holds the centre column below xl so the right cluster stays in column three. */}
-          <span className="xl:hidden" aria-hidden="true" />
+          <span className="min-w-3 flex-1" aria-hidden="true" />
 
-          <div className="flex items-center gap-2 justify-self-end sm:gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             {/* One status control per viewport: icon and age below md, the
                 label and its age from md. */}
             <div className="whitespace-nowrap md:hidden">
