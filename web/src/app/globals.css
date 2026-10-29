@@ -744,19 +744,66 @@ html.js .reveal-text[data-reveal="pending"][data-scroll="true"] .split-line {
     transform 0.5s var(--ease-out) var(--rise-delay, 0.6s);
 }
 
-/* One evenly spaced list: every destination is a row of the same height
-   with a hairline above it. Two columns of four from lg. */
+/* The list fills the height between the top bar and the footer row: the
+   eight rows share it equally, up to a cap, so every row is a large target
+   and the sheet has no dead band. Type follows the viewport height so the
+   rows always fit; the sheet never scrolls. */
+.menu-sheet__list {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 800px;
+}
 .menu-sheet__row {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 44px;
   border-top: 1px solid var(--brand-band-hairline);
 }
+.menu-sheet__row:last-child {
+  border-bottom: 1px solid var(--brand-band-hairline);
+}
 .menu-sheet__link {
-  padding-block: 14px;
+  flex: 1;
+  min-width: 0;
+  margin-inline: -10px;
+  padding-inline: 10px;
+  border-radius: var(--radius-md);
   color: var(--brand-band-ink);
-  transition: color var(--dur-fast) var(--ease-out);
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
+}
+.menu-sheet__link:hover {
+  background: rgba(232, 240, 239, 0.05);
+}
+.menu-sheet__mask {
+  flex: 1;
 }
 .menu-sheet__num {
+  font-size: clamp(12.5px, 1.6vh, 15px);
+  font-weight: 500;
   color: var(--brand-band-ink-muted);
   transition: color var(--dur-fast) var(--ease-out);
+}
+.menu-sheet__label {
+  font-size: clamp(22px, 3.5vh, 40px);
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.menu-sheet__desc {
+  display: none;
+  margin-top: 2px;
+  font-size: 15px;
+  line-height: 1.4;
+}
+.menu-sheet__arrow {
+  opacity: 0.35;
+  transform: translateX(-6px);
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
 .menu-sheet__link:hover,
 .menu-sheet__link[aria-current="page"],
@@ -764,50 +811,63 @@ html.js .reveal-text[data-reveal="pending"][data-scroll="true"] .split-line {
 .menu-sheet__link[aria-current="page"] .menu-sheet__num {
   color: var(--brand-band-accent);
 }
-.menu-sheet__desc {
-  display: none;
+.menu-sheet__link:hover .menu-sheet__arrow,
+.menu-sheet__link:focus-visible .menu-sheet__arrow,
+.menu-sheet__link[aria-current="page"] .menu-sheet__arrow {
+  opacity: 1;
+  transform: none;
 }
 @media (min-height: 860px) {
   .menu-sheet__desc {
     display: block;
   }
 }
-@media (min-width: 1024px) {
-  .menu-sheet__list {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(4, auto);
-    grid-auto-flow: column;
-    column-gap: 64px;
-  }
-  .menu-sheet__link {
-    padding-block: 18px;
-  }
-}
-@media (min-width: 1024px) and (min-height: 620px) {
+@media (min-width: 1024px) and (min-height: 760px) {
   .menu-sheet__desc {
     display: block;
   }
 }
 
-/* The sheet never scrolls, so on short screens it gives up detail to fit:
-   first the descriptions, then row spacing, and on landscape phones the
-   list splits into two columns. */
-@media (max-height: 700px) {
-  .menu-sheet__link {
-    padding-block: 9px;
-  }
+/* The brand column, from lg: the mark and wordmark large, with the summary
+   beneath. */
+.menu-sheet__brand-mark {
+  width: clamp(72px, 11vh, 120px);
+  height: clamp(72px, 11vh, 120px);
 }
+.menu-sheet__brand-name {
+  font-size: clamp(40px, 2rem + 2vw, 64px);
+  line-height: 1.02;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+/* Footer row: larger labels and controls than the page chrome. */
+.menu-sheet__overline {
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--brand-band-ink-muted);
+}
+.menu-sheet__status > * {
+  min-height: 44px;
+  padding-inline: 16px;
+  font-size: 14px;
+}
+
+/* Landscape phones: the list splits into two columns of four and the footer
+   tightens, so everything still fits without scrolling. */
 @media (max-height: 560px) {
   .menu-sheet__list {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(4, auto);
+    grid-template-rows: repeat(4, minmax(44px, 1fr));
     grid-auto-flow: column;
     column-gap: 32px;
   }
-  .menu-sheet__link {
-    padding-block: 6px;
+  .menu-sheet__row:nth-child(4) {
+    border-bottom: 1px solid var(--brand-band-hairline);
   }
   .menu-sheet__desc {
     display: none;

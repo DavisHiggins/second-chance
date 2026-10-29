@@ -64,6 +64,8 @@ export const SHELL = {
   openMenu: "Open menu",
   closeMenu: "Close menu",
   menuTitle: "Navigation",
+  menuSummary:
+    "SecondChance reads the City of Austin's public shelter records and spots the animals likely to wait longest. It turns that into a weekly outreach plan, so help reaches them sooner.",
   modelChipPrefix: "Model",
   modelChipUnavailable: "Model updating",
   dataDetails: "Data details",
