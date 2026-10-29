@@ -59,17 +59,12 @@ function sparklinePath(values: number[]): string {
  * only when comparable monthly values in the same unit exist, and a "What
  * this means" disclosure fed by the shared metric registry so the tile, the
  * drawer and the model page cannot disagree.
+ *
+ * The disclosure belongs to this tile alone. Everything above it sits in the
+ * `data-tile-head` block, which StatTileGrid sizes so a row of closed tiles
+ * lines up without stretching.
  */
-export function StatTile({
-  tile,
-  detailsOpen,
-  onDetailsToggle,
-}: {
-  tile: StatTileData;
-  /** When the row shares one open state, it is passed in here. */
-  detailsOpen?: boolean;
-  onDetailsToggle?: (open: boolean) => void;
-}) {
+export function StatTile({ tile }: { tile: StatTileData }) {
   const reducedMotion = useReducedMotion();
   const measured = tile.display !== null;
   const entry = metric(tile.metricId);
@@ -83,7 +78,7 @@ export function StatTile({
 
   return (
     <div
-      className="flex h-full flex-col justify-between border"
+      className="flex flex-col border"
       style={{
         background: "var(--surface-card)",
         borderColor: "var(--border-hairline)",
@@ -92,89 +87,86 @@ export function StatTile({
         padding: "var(--card-padding)",
       }}
     >
-      <div>
-        <p className="t-overline" style={{ color: "var(--ink-muted)" }}>
-          {tile.label}
-        </p>
-        <p
-          className="t-display tabular mt-2"
-          style={{ color: measured ? "var(--ink-primary)" : "var(--ink-muted)" }}
-        >
-          {measured ? (
-            tile.countTo !== undefined ? (
-              <CountUp value={tile.countTo} id={`tile-${tile.id}`} />
+      <div data-tile-head="" className="flex flex-col justify-between">
+        <div>
+          <p className="t-overline" style={{ color: "var(--ink-muted)" }}>
+            {tile.label}
+          </p>
+          <p
+            className="t-display tabular mt-2"
+            style={{ color: measured ? "var(--ink-primary)" : "var(--ink-muted)" }}
+          >
+            {measured ? (
+              tile.countTo !== undefined ? (
+                <CountUp value={tile.countTo} id={`tile-${tile.id}`} />
+              ) : (
+                tile.display
+              )
             ) : (
-              tile.display
-            )
+              NOT_MEASURED
+            )}
+            {measured ? (
+              <span className="t-small ml-2 font-normal" style={{ color: "var(--ink-muted)" }}>
+                {tile.unit}
+              </span>
+            ) : null}
+          </p>
+          <p className="t-small mt-2" style={{ color: "var(--ink-secondary)" }}>
+            {tile.footnote}
+          </p>
+        </div>
+
+        <div className="mt-4 flex items-end justify-between gap-3">
+          {path ? (
+            <figure className="m-0">
+              <svg
+                width={WIDTH}
+                height={HEIGHT}
+                viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+                role="img"
+                aria-label={sparkSummary}
+                className="overflow-visible"
+              >
+                <motion.path
+                  d={path}
+                  fill="none"
+                  stroke="var(--series-1)"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  initial={reducedMotion ? false : { pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: DUR.slow, ease: EASE_OUT, delay: 0.12 }}
+                />
+                {hasPartial ? (
+                  <circle
+                    cx={WIDTH}
+                    cy={Number(path.split(" ").pop() ?? 0)}
+                    r={3}
+                    fill="var(--surface-card)"
+                    stroke="var(--series-1)"
+                    strokeWidth={1.5}
+                  />
+                ) : null}
+              </svg>
+              <figcaption className="t-caption mt-1" style={{ color: "var(--ink-muted)" }}>
+                {tile.sparkLabel}
+                {hasPartial ? " · last point is a partial month" : ""}
+              </figcaption>
+            </figure>
           ) : (
-            NOT_MEASURED
+            <span />
           )}
-          {measured ? (
-            <span className="t-small ml-2 font-normal" style={{ color: "var(--ink-muted)" }}>
-              {tile.unit}
+
+          {tile.sampleLine ? (
+            <span className="t-caption tabular text-right" style={{ color: "var(--ink-muted)" }}>
+              {tile.sampleLine}
             </span>
           ) : null}
-        </p>
-        <p className="t-small mt-2" style={{ color: "var(--ink-secondary)" }}>
-          {tile.footnote}
-        </p>
+        </div>
       </div>
 
-      <div className="mt-4 flex items-end justify-between gap-3">
-        {path ? (
-          <figure className="m-0">
-            <svg
-              width={WIDTH}
-              height={HEIGHT}
-              viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-              role="img"
-              aria-label={sparkSummary}
-              className="overflow-visible"
-            >
-              <motion.path
-                d={path}
-                fill="none"
-                stroke="var(--series-1)"
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                initial={reducedMotion ? false : { pathLength: 0 }}
-                animate={{ pathLength: 1 }}
-                transition={{ duration: DUR.slow, ease: EASE_OUT, delay: 0.12 }}
-              />
-              {hasPartial ? (
-                <circle
-                  cx={WIDTH}
-                  cy={Number(path.split(" ").pop() ?? 0)}
-                  r={3}
-                  fill="var(--surface-card)"
-                  stroke="var(--series-1)"
-                  strokeWidth={1.5}
-                />
-              ) : null}
-            </svg>
-            <figcaption className="t-caption mt-1" style={{ color: "var(--ink-muted)" }}>
-              {tile.sparkLabel}
-              {hasPartial ? " · last point is a partial month" : ""}
-            </figcaption>
-          </figure>
-        ) : (
-          <span />
-        )}
-
-        {tile.sampleLine ? (
-          <span className="t-caption tabular text-right" style={{ color: "var(--ink-muted)" }}>
-            {tile.sampleLine}
-          </span>
-        ) : null}
-      </div>
-
-      <Disclosure
-        summary={DASHBOARD.whatThisMeans}
-        className="mt-3"
-        open={detailsOpen}
-        onToggle={onDetailsToggle}
-      >
+      <Disclosure summary={DASHBOARD.whatThisMeans} className="mt-3">
         <p className="t-small" style={{ color: "var(--ink-secondary)" }}>
           {entry.meaning}
         </p>
