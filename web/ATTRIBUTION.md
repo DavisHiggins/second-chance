@@ -15,7 +15,7 @@ taken from.
 | --- | --- | --- |
 | `src/components/motion/SmoothScrollProvider.tsx` | Lenis smooth wheel scrolling driven from the GSAP ticker | `_raw/Awwwards Pack-20260628T224220Z-3-002/Awwwards Pack/Scroll Animation/56/code.zip` → `fall-master/src/components/SmoothScroll/Lenis.jsx` |
 | `src/components/motion/RevealText.tsx` | Masked line reveal for headings (SplitText `mask: "lines"`) | `_raw/Awwwards Pack-20260628T224220Z-3-001/Awwwards Pack/Text Animations/14/code.zip` → `files/script.js` (mask technique); rhythm from the deployed Higgins Building Group `RevealText` |
-| `src/components/shell/MobileMenu.tsx` + `.menu-sheet` in `globals.css` | Circular clip-path reveal from the toggle, numbered links, single reversible transition | `_raw/Awwwards Pack-20260628T224220Z-3-001/Awwwards Pack/Navigation Menus/10/code.zip` → `files/script.js`, `files/style.css` |
+| `src/components/shell/MobileMenu.tsx` + `.menu-sheet` in `globals.css` | Layered top-down wipe (two colour layers, then the panel), links rising out of line masks, single reversible transition | Animmaster `components/navigation/navigation-menus-018-pack-002/src/files/script.js`, `styles.css` (Navigation Menus 18). Replaced the earlier circular ink-blot reveal from Navigation Menus 10. |
 | `src/components/motion/MagneticButton.tsx` | Magnetic pointer-following CTA | `_raw/Awwwards Pack-20260628T224220Z-3-001/Awwwards Pack/Physics Effects/3/code.zip` → `magnetic-button-main/src/components/gsap.jsx` |
 
 ### What changed on the way in
@@ -38,10 +38,11 @@ The originals are demo code. Each was rewritten rather than pasted:
   stays native; nested scrollers opt out with `data-lenis-prevent`. Settings
   (1.1s exponential ease-out, wheel ×1, touch ×1.5) are the ones inspected on
   the deployed Higgins Building Group site.
-* **The ink-blot menu became a dialog.** The original tweened a GSAP proxy
-  into an SVG clip; here a CSS custom property drives one reversible
-  clip-path transition, so a rapid double tap cannot strand the sheet half
-  open. Focus moves in, Tab is contained, Escape closes, the page behind is
+* **The layered-wipe menu became a dialog.** The original is a paused GSAP
+  timeline with SplitText line masks; here each step is a CSS transition
+  keyed on `data-open` with the delays mirrored for closing, so a rapid
+  double tap cannot strand the sheet half open, and the masks are plain
+  `overflow: hidden` wrappers rather than a DOM split. Focus moves in, Tab is contained, Escape closes, the page behind is
   `inert`, and focus returns to the toggle. Links are interactive from the
   first frame; the stagger is decoration only.
 * **`MagneticButton` only engages for a fine pointer**, cleans up its

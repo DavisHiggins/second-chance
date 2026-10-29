@@ -69,6 +69,8 @@ export const SHELL = {
   dataDetails: "Data details",
   dataDetailsClose: "Close",
   dataStatus: "Data status",
+  contactLinks: "Contact",
+  theme: "Theme",
   densityComfortable: "Comfortable",
   densityCompact: "Compact",
   themeLight: "Light",

@@ -659,55 +659,161 @@ html.js .reveal-text[data-reveal="pending"][data-scroll="true"] .split-line {
   transform: rotate(-45deg);
 }
 
-/* Mobile menu sheet. The circular clip-path is adapted from the Animaster
-   ink-blot reveal (see ATTRIBUTION.md), driven by a CSS custom property so
-   opening and closing are the same transition run in either direction and a
-   rapid toggle cannot strand the sheet half-open. */
+/* Menu sheet. The layered wipe is adapted from the Animaster Navigation
+   Menus 18 reveal (see ATTRIBUTION.md): a teal layer and a teal-navy layer
+   drop from the top edge in turn, the navy panel is uncovered top to
+   bottom behind them, and each link rises out of its own mask. Every step is
+   a CSS transition keyed on `data-open`, with the delays mirrored on close,
+   so opening and closing are one reversible state and a rapid toggle cannot
+   strand the sheet half-open. Visibility drops only after the close has
+   played. */
 .menu-sheet {
-  clip-path: circle(var(--menu-r, 0px) at var(--menu-x, calc(100% - 34px)) var(--menu-y, 32px));
-  transition: clip-path 0.55s var(--ease-in-out);
+  --menu-wipe: 0.6s;
+  visibility: hidden;
+  pointer-events: none;
+  transition: visibility 0s linear 0.8s;
 }
 .menu-sheet[data-open="true"] {
-  --menu-r: 150vmax;
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 0s;
 }
-.menu-sheet__item {
+.menu-sheet__layer {
+  position: absolute;
+  inset: 0;
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform var(--menu-wipe) var(--ease-in-out);
+  will-change: transform;
+}
+.menu-sheet__layer--1 {
+  background: var(--brand-teal);
+  transition-delay: 0.12s;
+}
+.menu-sheet__layer--2 {
+  background: color-mix(in srgb, var(--brand-teal) 30%, var(--brand-navy-deep));
+  transition-delay: 0.06s;
+}
+.menu-sheet[data-open="true"] .menu-sheet__layer {
+  transform: scaleY(1);
+}
+.menu-sheet[data-open="true"] .menu-sheet__layer--1 {
+  transition-delay: 0s;
+}
+.menu-sheet[data-open="true"] .menu-sheet__layer--2 {
+  transition-delay: 0.06s;
+}
+.menu-sheet__panel {
+  position: relative;
+  clip-path: inset(0 0 100% 0);
+  transition: clip-path var(--menu-wipe) var(--ease-in-out);
+  will-change: clip-path;
+}
+.menu-sheet[data-open="true"] .menu-sheet__panel {
+  clip-path: inset(0 0 0 0);
+  transition-delay: 0.12s;
+}
+
+/* Links rise out of a mask once the panel is uncovered. On close they hold
+   still while the panel wipes away, then reset out of sight. */
+.menu-sheet__mask {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+}
+.menu-sheet__rise {
+  transform: translateY(110%);
+  transition: transform 0s linear 0.8s;
+}
+.menu-sheet[data-open="true"] .menu-sheet__rise {
+  transform: none;
+  transition: transform 0.7s var(--ease-out) var(--rise-delay, 0.36s);
+}
+.menu-sheet__fade {
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateY(8px);
   transition:
-    opacity 0.35s var(--ease-out),
-    transform 0.35s var(--ease-out);
+    opacity 0s linear 0.8s,
+    transform 0s linear 0.8s;
 }
-.menu-sheet[data-open="true"] .menu-sheet__item {
+.menu-sheet[data-open="true"] .menu-sheet__fade {
   opacity: 1;
   transform: none;
+  transition:
+    opacity 0.5s var(--ease-out) var(--rise-delay, 0.6s),
+    transform 0.5s var(--ease-out) var(--rise-delay, 0.6s);
+}
+
+/* One evenly spaced list: every destination is a row of the same height
+   with a hairline above it. Two columns of four from lg. */
+.menu-sheet__row {
+  border-top: 1px solid var(--brand-band-hairline);
+}
+.menu-sheet__link {
+  padding-block: 14px;
+  color: var(--brand-band-ink);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.menu-sheet__num {
+  color: var(--brand-band-ink-muted);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.menu-sheet__link:hover,
+.menu-sheet__link[aria-current="page"],
+.menu-sheet__link:hover .menu-sheet__num,
+.menu-sheet__link[aria-current="page"] .menu-sheet__num {
+  color: var(--brand-band-accent);
+}
+.menu-sheet__desc {
+  display: none;
+}
+@media (min-height: 860px) {
+  .menu-sheet__desc {
+    display: block;
+  }
+}
+@media (min-width: 1024px) {
+  .menu-sheet__list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(4, auto);
+    grid-auto-flow: column;
+    column-gap: 64px;
+  }
+  .menu-sheet__link {
+    padding-block: 18px;
+  }
+}
+@media (min-width: 1024px) and (min-height: 620px) {
+  .menu-sheet__desc {
+    display: block;
+  }
 }
 
 /* The sheet never scrolls, so on short screens it gives up detail to fit:
-   first the one-line descriptions, then row spacing, and on landscape phones
-   the three groups sit side by side. Tall screens are unchanged. */
-@media (max-height: 919px) {
-  .menu-sheet__desc {
-    display: none;
-  }
-}
-@media (max-height: 759px) {
+   first the descriptions, then row spacing, and on landscape phones the
+   list splits into two columns. */
+@media (max-height: 700px) {
   .menu-sheet__link {
-    padding-block: 8px;
-  }
-  .menu-sheet__group {
-    margin-top: 8px;
+    padding-block: 9px;
   }
 }
-@media (max-height: 539px) {
-  .menu-sheet__nav {
+@media (max-height: 560px) {
+  .menu-sheet__list {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    column-gap: 24px;
-    padding-top: 0;
-    padding-bottom: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(4, auto);
+    grid-auto-flow: column;
+    column-gap: 32px;
   }
   .menu-sheet__link {
     padding-block: 6px;
+  }
+  .menu-sheet__desc {
+    display: none;
+  }
+  .menu-sheet__footer {
+    padding-block: 10px;
   }
 }
 
@@ -956,13 +1062,17 @@ details.disclosure[open] > summary .disclosure__chevron {
 
 @media (prefers-reduced-motion: reduce) {
   html.js .reveal-text[data-reveal="pending"] .split-line,
-  .menu-sheet__item {
+  .menu-sheet__rise,
+  .menu-sheet__fade {
     opacity: 1 !important;
     transform: none !important;
-    animation: none !important;
   }
-  .menu-sheet {
-    transition: none;
+  .menu-sheet,
+  .menu-sheet__layer,
+  .menu-sheet__panel,
+  .menu-sheet__rise,
+  .menu-sheet__fade {
+    transition: none !important;
   }
   .hero-surface::before {
     display: none;
