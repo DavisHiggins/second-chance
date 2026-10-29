@@ -205,6 +205,17 @@ export function formatRelativeAge(hours: number | null | undefined): string {
   return `about ${days} days ago`;
 }
 
+/** "just now", "12 min ago", "3 hr ago", "2 days ago". The header chip's
+ *  age: short enough to sit inside the pill beside the full navigation. */
+export function formatShortAge(hours: number | null | undefined): string {
+  if (hours === null || hours === undefined || !Number.isFinite(hours)) return "";
+  const minutes = Math.max(0, Math.floor(hours * 60));
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  if (hours < 48) return `${Math.floor(hours)} hr ago`;
+  return `${Math.floor(hours / 24)} days ago`;
+}
+
 /** 0.083 becomes "+8.3 percentage points"; unit spelled out so it is never
  *  mistaken for a relative change. */
 export function formatPercentagePoints(value: Maybe, fractionDigits = 1, signed = true): string {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatInstant, formatRelativeAge } from "@/lib/format";
+import { formatInstant, formatRelativeAge, formatShortAge } from "@/lib/format";
 import { STATUS } from "@/lib/content";
 import { toUtcMs } from "@/lib/austin/time";
 import { dataAsOf, type DataMode, type DataStatus } from "@/lib/austin/status";
@@ -21,7 +21,9 @@ import { StatusIcon, type StatusTone } from "@/components/ui/Status";
  * otherwise the newest row stamp, both read on Austin's clock with the zone
  * named. A new request from this site does not count as a new publication.
  * The age is computed on the client so it keeps counting after the page was
- * served; the server-rendered copy carries no time at all.
+ * served; the server-rendered copy carries no time at all. In the header it
+ * is drawn in its short form ("12 min ago") inside the pill, so the chip
+ * reads as a clock that is running rather than a static badge.
  */
 
 const TONE_BY_MODE: Record<DataMode, StatusTone> = {
@@ -44,6 +46,7 @@ export function FreshnessChip({
   compact = false,
   showAge = true,
   onBand = false,
+  shortAge = false,
 }: {
   status: DataStatus;
   onOpenDetails?: () => void;
@@ -54,8 +57,10 @@ export function FreshnessChip({
   showAge?: boolean;
   /** Drawn on the navy band. */
   onBand?: boolean;
+  /** Show the age in its short form ("12 min ago"), even when compact. */
+  shortAge?: boolean;
 }) {
-  const [stamp, setStamp] = useState<{ time: string; age: string } | null>(null);
+  const [stamp, setStamp] = useState<{ time: string; age: string; short: string } | null>(null);
 
   useEffect(() => {
     const iso = dataAsOf(status);
@@ -65,13 +70,15 @@ export function FreshnessChip({
     }
     const compute = () => {
       const ms = toUtcMs(iso);
+      const hours = ms === null ? null : (Date.now() - ms) / 3_600_000;
       setStamp({
         time: formatInstant(iso),
-        age: ms === null ? "" : formatRelativeAge((Date.now() - ms) / 3_600_000),
+        age: hours === null ? "" : formatRelativeAge(hours),
+        short: formatShortAge(hours),
       });
     };
     compute();
-    const timer = window.setInterval(compute, 60_000);
+    const timer = window.setInterval(compute, 30_000);
     return () => window.clearInterval(timer);
   }, [status]);
 
@@ -90,8 +97,13 @@ export function FreshnessChip({
             ? ` · data from ${stamp.time}`
             : "";
 
-  // When the age is not drawn, it moves into the tooltip rather than vanishing.
-  const tooltip = [compact || !showAge ? `${label}${detail}` : null, status.problem]
+  // The short age is only meaningful for a feed that is publishing.
+  const short =
+    shortAge && stamp && (status.mode === "live" || status.mode === "delayed") ? stamp.short : "";
+  const longAgeDrawn = !shortAge && !compact && showAge;
+
+  // When the full age is not drawn, it moves into the tooltip rather than vanishing.
+  const tooltip = [longAgeDrawn ? null : `${label}${detail}`, status.problem]
     .filter(Boolean)
     .join(". ");
 
@@ -100,8 +112,14 @@ export function FreshnessChip({
       <StatusIcon tone={tone} size={14} label={`Data status: ${label}`} />
       <span className={compact ? "sr-only sm:not-sr-only" : ""}>
         {label}
-        {compact || !showAge ? "" : detail}
+        {longAgeDrawn ? detail : ""}
+        {short ? <span aria-hidden="true">{" ·"}</span> : null}
       </span>
+      {short ? (
+        <span className="tabular" aria-hidden="true" style={{ color: onBand ? "var(--brand-band-ink-muted)" : "var(--ink-muted)" }}>
+          {short}
+        </span>
+      ) : null}
       {stamp ? <span className="sr-only">{` Published ${stamp.time}.`}</span> : null}
       {status.problem ? <span className="sr-only">{` ${status.problem}`}</span> : null}
     </>
